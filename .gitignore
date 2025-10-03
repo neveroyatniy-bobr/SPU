@@ -1,0 +1,6 @@
+*/build/
+docs/html/
+.vscode/
+*/*.exe
+*.exe
+program
