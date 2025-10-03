@@ -20,7 +20,7 @@ else
 	FLAGS = $(DEBUG_FLAGS)
 endif
 
-FLAGS += -I$(INCLUDE)
+FLAGS += -I$(INCLUDE) -I..
 
 RED = "\e[31m"
 RESET = "\e[0m"
