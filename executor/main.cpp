@@ -13,7 +13,7 @@ int main() {
 
     printf("added\n");
 
-    stack.data[-1] = 11;
+    stack.data[0] = 11;
 
     DO StackVerefy(&stack) OR DIE(&stack);
 

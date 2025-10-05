@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "color.h"
 
@@ -267,5 +268,4 @@ bool Die(Stack* stack, Error error_code) {
     return 0;
 }
 
-// FIXME условное компиляция если релиз отключать канарейку --NOBIRD
 // FIXME Hash - защита

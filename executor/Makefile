@@ -20,6 +20,11 @@ else
 	FLAGS = $(DEBUG_FLAGS)
 endif
 
+NOBIRD ?= 0
+ifeq ($(NOBIRD),1)
+	FLAGS += -D NOBIRD
+endif
+
 FLAGS += -I$(INCLUDE) -I..
 
 RED = "\e[31m"

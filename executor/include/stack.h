@@ -1,7 +1,7 @@
 #ifndef STACK_H_
 #define STACK_H_
 
-#include <stdlib.h>
+#include <stdio.h>
 
 enum Error {
     OK                    =  0,
@@ -35,10 +35,16 @@ static const size_t MIN_CAPACITY = 16;
 /// @brief Фактор увеличения вместимости стэка при переполнении
 static const size_t GROW_FACTOR = 2;
 
+#ifndef NOBIRD
 /// @brief Толщина канареешной защиты
 static const ssize_t BIRD_SIZE = 1;
+#else
+/// @brief Толщина канареешной защиты
+static const ssize_t BIRD_SIZE = 0;
+#endif
 /// @brief Значение канарейки
 static const stack_elem_t BIRD_VALUE = 1890165238;
+
 
 typedef void (*Handler)(Stack* stack, Error error_code);
 
