@@ -35,13 +35,13 @@ static const size_t MIN_CAPACITY = 16;
 /// @brief Фактор увеличения вместимости стэка при переполнении
 static const size_t GROW_FACTOR = 2;
 
-#ifndef NOBIRD
 /// @brief Толщина канареешной защиты
+#ifndef NOBIRD
 static const ssize_t BIRD_SIZE = 1;
 #else
-/// @brief Толщина канареешной защиты
 static const ssize_t BIRD_SIZE = 0;
 #endif
+
 /// @brief Значение канарейки
 static const stack_elem_t BIRD_VALUE = 1890165238;
 
