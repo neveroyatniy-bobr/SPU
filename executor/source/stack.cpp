@@ -5,6 +5,8 @@
 
 #include "color.h"
 
+static Handler HANDLER = StdHandler;
+
 inline static size_t min(size_t a, size_t b) {
     return a <= b ? a : b;
 }
@@ -45,6 +47,9 @@ void PrintStackError(Error error) {
             break;
         case BIRD_ERROR:
             fprintf(stderr, "Вмешательство в буффер стэка извне\n");
+            break;
+        case HANDLER_NULL_PTR:
+            fprintf(stderr, "Попытка передать в качестве указателя на хэндлер нулевой указатель\n");
             break;
         default:
             fprintf(stderr, "Непредвиденная ошибка\n");
@@ -227,18 +232,38 @@ void StackDump(Stack *stack, Error error_code) {
     fprintf(stderr, BYEL "|" GRN " idx " BYEL "|" GRN " value  " BYEL "|" GRN " address        " BYEL "|\n" reset);
     fprintf(stderr, BYEL "|-------------------------------|\n" reset);
     if (stack->size > 0) {
-        fprintf(stderr, BYEL "|" MAG " %3d " BYEL "|" MAG " %5d  " BYEL "|" MAG " %p " BYEL "|" GRN " <-- top\n" reset, stack->size - 1, stack->data[stack->size - 1], &stack->data[stack->size - 1]);
+        fprintf(stderr, BYEL "|" MAG " %3lu " BYEL "|" MAG " %5d  " BYEL "|" MAG " %p " BYEL "|" GRN " <-- top\n" reset, stack->size - 1, stack->data[stack->size - 1], &stack->data[stack->size - 1]);
     }
-    for (int i = stack->size - 2; i >= 0; --i) {
-        fprintf(stderr, BYEL "|" MAG " %3d " BYEL "|" MAG " %5d  " BYEL "|" MAG " %p " BYEL "|\n" reset, i, stack->data[i], &stack->data[i]);
+    for (ssize_t i = (ssize_t)stack->size - 2; i >= 0; --i) {
+        fprintf(stderr, BYEL "|" MAG " %3ld " BYEL "|" MAG " %5d  " BYEL "|" MAG " %p " BYEL "|\n" reset, i, stack->data[i], &stack->data[i]);
     }
     fprintf(stderr, BYEL "=================================\n" reset);
-    fprintf(stderr, GRN "size " BYEL "=" MAG " %ld" BYEL "," GRN " capacity " BYEL "=" MAG " %ld" BYEL "         |\n" reset, stack->size, stack->capacity);
+    fprintf(stderr, GRN "size " BYEL "=" MAG " %lu" BYEL "," GRN " capacity " BYEL "=" MAG " %lu" BYEL "         |\n" reset, stack->size, stack->capacity);
     fprintf(stderr, BYEL "---------------------------------\n" reset);
 }
 
-bool Die(Stack* stack, Error error_code) {
+void StdHandler(Stack* stack, Error error_code) {
     StackDump(stack, error_code);
+}
+
+Error SetHandler(Handler handler) {
+    if (handler == NULL) {
+        return HANDLER_NULL_PTR;
+    }
+
+    HANDLER = handler;
+
+    return OK;
+}
+
+Error SetStdHandler() {
+    HANDLER = StdHandler;
+
+    return OK;
+}
+
+bool Die(Stack* stack, Error error_code) {
+    HANDLER(stack, error_code);
     return 0;
 }
 

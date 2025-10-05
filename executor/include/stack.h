@@ -4,16 +4,17 @@
 #include <stdlib.h>
 
 enum Error {
-    OK                    = 0,
-    POP_ON_EMPTY_STACK    = 1,
-    STACK_NULL_PTR        = 2,
-    STACK_EXPANTION_ERR   = 3,
-    STACK_CONTRACTION_ERR = 4,
-    STACK_INIT_ERR        = 5,
-    STACK_DATA_NULL_PTR   = 6,
-    STACK_OVERFLOW        = 7,
-    POPED_ELEM_NULL_PTR   = 8,
-    BIRD_ERROR            = 9
+    OK                    =  0,
+    POP_ON_EMPTY_STACK    =  1,
+    STACK_NULL_PTR        =  2,
+    STACK_EXPANTION_ERR   =  3,
+    STACK_CONTRACTION_ERR =  4,
+    STACK_INIT_ERR        =  5,
+    STACK_DATA_NULL_PTR   =  6,
+    STACK_OVERFLOW        =  7,
+    POPED_ELEM_NULL_PTR   =  8,
+    BIRD_ERROR            =  9,
+    HANDLER_NULL_PTR      = 10
 };
 
 /// @brief Выводит сообщение об ошибке в stderr
@@ -39,9 +40,7 @@ static const ssize_t BIRD_SIZE = 1;
 /// @brief Значение канарейки
 static const stack_elem_t BIRD_VALUE = 1890165238;
 
-typedef bool (*Handler)(Stack* stack, Error error_code);
-
-static Handler handler;
+typedef void (*Handler)(Stack* stack, Error error_code);
 
 /// @brief Функция иницивлизации стэка
 /// @param stack Стэк
@@ -94,8 +93,24 @@ void StackDump(Stack* stack, Error error_code);
     }                                    \
 }
 
+/// @brief Стандартная функция обработки ошибок. Вызывает StackDump()
+/// @param stack Стэк
+/// @param error_code Код ошибки 
+void StdHandler(Stack* stack, Error error_code);
+
+/// @brief Устанавливает хэндлер
+/// @param handler Указатель на хэндлер
+/// @return Код ошибки
+Error SetHandler(Handler handler);
+
+/// @brief Устанавливает хэндлер по умолчанию
+/// @return Код ошибки
+Error SetStdHandler();
+
+/// @brief Функция которая вызывается при ошибке в макросе DO Smth(&stack) OR DIE(&stack);
+/// @param stack Стэк
+/// @param error_code Код ошибки
 bool Die(Stack* stack, Error error_code);
-// FIXME Сощдать глобальный указатель на хэндлер 
 
 #define DO { Error err_code_ = OK; (OK == (err_code_ = 
 #define OR )) ||
