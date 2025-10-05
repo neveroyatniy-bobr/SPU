@@ -3,8 +3,14 @@
 #include <assert.h>
 #include <stdio.h>
 
+#include "color.h"
+
 inline static size_t min(size_t a, size_t b) {
     return a <= b ? a : b;
+}
+
+inline static size_t max(size_t a, size_t b) {
+    return a >= b ? a : b;
 }
 
 void PrintStackError(Error error) {
@@ -51,7 +57,7 @@ Error StackInit(Stack* stack, size_t elem_capacity) {
         return STACK_NULL_PTR;
     }
 
-    stack->capacity = (elem_capacity >= MIN_CAPACITY ? elem_capacity : MIN_CAPACITY) + 2 * BIRD_SIZE;
+    stack->capacity = max(MIN_CAPACITY, elem_capacity) + 2 * BIRD_SIZE;
 
     stack->size = 0;
 
@@ -178,7 +184,7 @@ Error StackPop(Stack* stack, stack_elem_t* poped_elem) {
     stack->data[stack->size - 1] = 0;
     stack->size--;
 
-    if (stack->size == (stack->capacity - 2 * BIRD_SIZE) / GROW_FACTOR) {
+    if (stack->size == (stack->capacity - 2 * BIRD_SIZE) / GROW_FACTOR - 1) {
         StackContraction(stack);
     }
 
@@ -212,23 +218,29 @@ Error StackVerefy(Stack* stack) {
     return OK;
 }
 
-void StackDump(Stack* stack, Error error_code) {
+void StackDump(Stack *stack, Error error_code) {
+    fprintf(stderr, BRED "ERROR: ");
     PrintStackError(error_code);
+    fprintf(stderr, reset);
 
-    fprintf(stderr, "capacity = %lu\n", stack->capacity);
-    fprintf(stderr, "size     = %lu\n", stack->size);
-    fprintf(stderr, "data     = %p\n", stack->data);
-
-    if (stack->data == NULL) {
-        return;
+    fprintf(stderr, BYEL "===========[STACK DUMP]==========\n" reset);
+    fprintf(stderr, BYEL "|" GRN " idx " BYEL "|" GRN " value  " BYEL "|" GRN " address        " BYEL "|\n" reset);
+    fprintf(stderr, BYEL "|-------------------------------|\n" reset);
+    if (stack->size > 0) {
+        fprintf(stderr, BYEL "|" MAG " %3d " BYEL "|" MAG " %5d  " BYEL "|" MAG " %p " BYEL "|" GRN " <-- top\n" reset, stack->size - 1, stack->data[stack->size - 1], &stack->data[stack->size - 1]);
     }
-
-    for (size_t i = 0; i < min(stack->size, stack->capacity); i++) {
-        fprintf(stderr, "data[%lu] = %d\n", i, stack->data[i]);
+    for (int i = stack->size - 2; i >= 0; --i) {
+        fprintf(stderr, BYEL "|" MAG " %3d " BYEL "|" MAG " %5d  " BYEL "|" MAG " %p " BYEL "|\n" reset, i, stack->data[i], &stack->data[i]);
     }
+    fprintf(stderr, BYEL "=================================\n" reset);
+    fprintf(stderr, GRN "size " BYEL "=" MAG " %ld" BYEL "," GRN " capacity " BYEL "=" MAG " %ld" BYEL "         |\n" reset, stack->size, stack->capacity);
+    fprintf(stderr, BYEL "---------------------------------\n" reset);
 }
 
 bool Die(Stack* stack, Error error_code) {
     StackDump(stack, error_code);
     return 0;
 }
+
+// FIXME условное компиляция если релиз отключать канарейку --NOBIRD
+// FIXME Hash - защита
