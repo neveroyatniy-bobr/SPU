@@ -47,16 +47,35 @@ void PrintStackError(Error error) {
             fprintf(stderr, "Нулевой указатель на удаленный элемент\n");
             break;
         case BIRD_ERROR:
-            fprintf(stderr, "Вмешательство в буффер стэка извне\n");
+            fprintf(stderr, "Канарейка: Вмешательство в буффер стэка извне\n");
             break;
         case HANDLER_NULL_PTR:
             fprintf(stderr, "Попытка передать в качестве указателя на хэндлер нулевой указатель\n");
+            break;
+        case HASH_ERROR:
+            fprintf(stderr, "Хэш: Вмешательство в буффер стэка извне\n");
             break;
         default:
             fprintf(stderr, "Непредвиденная ошибка\n");
             break;
     }
 }
+
+#ifdef HASH_PROTECTED
+static size_t StackHash(Stack* stack) {
+    size_t hash = 0;
+    hash += stack->capacity;
+    hash += stack->size;
+    for (ssize_t i = -BIRD_SIZE; i < (ssize_t)stack->size + BIRD_SIZE; i++) {
+        hash += (size_t)stack->data[i];
+    }
+    return hash;
+}
+#else
+static size_t StackHash(Stack* /* stack */) {
+    return 0;
+}
+#endif
 
 Error StackInit(Stack* stack, size_t elem_capacity) {
     if (stack == NULL) {
@@ -73,10 +92,12 @@ Error StackInit(Stack* stack, size_t elem_capacity) {
     }
     stack->data = data;
 
-    for (int i = 0; i < BIRD_SIZE; i++) {
-        *(stack->data - BIRD_SIZE + i) = BIRD_VALUE;
-        *(stack->data + stack->capacity - 2 * BIRD_SIZE + i) = BIRD_VALUE;
+    for (ssize_t i = 0; i < BIRD_SIZE; i++) {
+        stack->data[- BIRD_SIZE + i] = BIRD_VALUE;
+        stack->data[(ssize_t)stack->capacity - 2 * BIRD_SIZE + i] = BIRD_VALUE;
     }
+
+    stack->hash = StackHash(stack);
 
     StackCheck(stack);
 
@@ -106,6 +127,8 @@ Error StackExpantion(Stack* stack) {
         *(stack->data + stack->capacity - 2 * BIRD_SIZE + i) = BIRD_VALUE;
     }
 
+    stack->hash = StackHash(stack);
+
     StackCheck(stack);
 
     return OK;
@@ -133,6 +156,8 @@ Error StackContraction(Stack* stack) {
     for (int i = 0; i < BIRD_SIZE; i++) {
         *(stack->data + stack->capacity - 2 * BIRD_SIZE + i) = BIRD_VALUE;
     }
+
+    stack->hash = StackHash(stack);
 
     StackCheck(stack);
 
@@ -169,6 +194,8 @@ Error StackAdd(Stack* stack, stack_elem_t elem) {
     stack->data[stack->size] = elem;
     stack->size++;
 
+    stack->hash = StackHash(stack);
+
     StackCheck(stack);
 
     return OK;
@@ -193,6 +220,8 @@ Error StackPop(Stack* stack, stack_elem_t* poped_elem) {
     if (stack->size == (stack->capacity - 2 * BIRD_SIZE) / GROW_FACTOR - 1) {
         StackContraction(stack);
     }
+
+    stack->hash = StackHash(stack);
 
     StackCheck(stack);
 
@@ -221,11 +250,15 @@ Error StackVerefy(Stack* stack) {
         return BIRD_ERROR;
     }
 
+    if (stack->hash != StackHash(stack)) {
+        return HASH_ERROR;
+    }
+
     return OK;
 }
 
-void StackDump(Stack *stack, Error error_code) {
-    fprintf(stderr, BRED "ERROR: ");
+void StackDump(Stack *stack, Error error_code, const char* file, size_t line) {
+    fprintf(stderr, BRED "ERROR in %s:%lu: ", file, line);
     PrintStackError(error_code);
     fprintf(stderr, reset);
 
@@ -243,8 +276,8 @@ void StackDump(Stack *stack, Error error_code) {
     fprintf(stderr, BYEL "---------------------------------\n" reset);
 }
 
-void StdHandler(Stack* stack, Error error_code) {
-    StackDump(stack, error_code);
+void StdHandler(Stack* stack, Error error_code, const char* file, size_t line) {
+    StackDump(stack, error_code, file, line);
 }
 
 Error SetHandler(Handler handler) {
@@ -259,13 +292,10 @@ Error SetHandler(Handler handler) {
 
 Error SetStdHandler() {
     HANDLER = StdHandler;
-
     return OK;
 }
 
-bool Die(Stack* stack, Error error_code) {
-    HANDLER(stack, error_code);
+bool Die(Stack* stack, Error error_code, const char* file, size_t line) {
+    HANDLER(stack, error_code, file, line);
     return 0;
 }
-
-// FIXME Hash - защита

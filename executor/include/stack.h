@@ -14,7 +14,8 @@ enum Error {
     STACK_OVERFLOW        =  7,
     POPED_ELEM_NULL_PTR   =  8,
     BIRD_ERROR            =  9,
-    HANDLER_NULL_PTR      = 10
+    HANDLER_NULL_PTR      = 10,
+    HASH_ERROR            = 11
 };
 
 /// @brief Выводит сообщение об ошибке в stderr
@@ -28,6 +29,7 @@ struct Stack {
     size_t capacity;
     size_t size;
     stack_elem_t* data;
+    size_t hash;
 };
 
 /// @brief Минимальная вместимость стэка
@@ -46,7 +48,7 @@ static const ssize_t BIRD_SIZE = 0;
 static const stack_elem_t BIRD_VALUE = 1890165238;
 
 
-typedef void (*Handler)(Stack* stack, Error error_code);
+typedef void (*Handler)(Stack* stack, Error error_code, const char* file, size_t line);
 
 /// @brief Функция иницивлизации стэка
 /// @param stack Стэк
@@ -86,10 +88,13 @@ Error StackPop(Stack* stack, stack_elem_t* poped_elem);
 /// @return Код ошибки
 Error StackVerefy(Stack* stack);
 
+
 /// @brief Выводит информацию о поломке стэка
 /// @param stack Стэк
 /// @param error_code Код ошибки
-void StackDump(Stack* stack, Error error_code);
+/// @param file Файл, в котором произошла ошибка
+/// @param line Строка, в которой произошла ошибка
+void StackDump(Stack* stack, Error error_code, const char* file, size_t line);
 
 #define StackCheck(stack)                \
 {                                        \
@@ -102,7 +107,9 @@ void StackDump(Stack* stack, Error error_code);
 /// @brief Стандартная функция обработки ошибок. Вызывает StackDump()
 /// @param stack Стэк
 /// @param error_code Код ошибки 
-void StdHandler(Stack* stack, Error error_code);
+/// @param file Файл, в котором произошла ошибка
+/// @param line Строка, в которой произошла ошибка
+void StdHandler(Stack* stack, Error error_code, const char* file, size_t line);
 
 /// @brief Устанавливает хэндлер
 /// @param handler Указатель на хэндлер
@@ -116,10 +123,12 @@ Error SetStdHandler();
 /// @brief Функция которая вызывается при ошибке в макросе DO Smth(&stack) OR DIE(&stack);
 /// @param stack Стэк
 /// @param error_code Код ошибки
-bool Die(Stack* stack, Error error_code);
+/// @param file Файл, в котором произошла ошибка
+/// @param line Строка, в которой произошла ошибка
+bool Die(Stack* stack, Error error_code, const char* file, size_t line);
 
 #define DO { Error err_code_ = OK; (OK == (err_code_ = 
 #define OR )) ||
-#define DIE(stack) Die(stack, err_code_); }
+#define DIE(stack) Die(stack, err_code_, __FILE__, __LINE__); }
 
 #endif // STACK_H_

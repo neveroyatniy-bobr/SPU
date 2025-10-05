@@ -21,8 +21,13 @@ else
 endif
 
 NOBIRD ?= 0
-ifeq ($(NOBIRD),1)
+ifeq ($(NOBIRD), 1)
 	FLAGS += -D NOBIRD
+endif
+
+HASH_PROTECTED ?= 0
+ifeq ($(HASH_PROTECTED), 1)
+	FLAGS += -D HASH_PROTECTED
 endif
 
 FLAGS += -I$(INCLUDE) -I..
@@ -70,4 +75,3 @@ Doxygen:
 
 CommitWarning:
 	@echo $(RED) "\n!!! COMMIT GITHUB !!!\n" $(RESET)
-
