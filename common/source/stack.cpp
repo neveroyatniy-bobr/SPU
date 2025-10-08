@@ -6,7 +6,7 @@
 
 #include "color.h"
 
-static Handler HANDLER = StdHandler;
+static StackHandler HANDLER = StackStdHandler;
 
 inline static size_t min(size_t a, size_t b) {
     return a <= b ? a : b;
@@ -16,10 +16,10 @@ inline static size_t max(size_t a, size_t b) {
     return a >= b ? a : b;
 }
 
-void PrintStackError(Error error) {
+void StackPrintError(StackError error) {
     switch (error)
     {
-        case OK:
+        case STACK_OK:
             fprintf(stderr, "Выполнено без ошибок\n");
             break;
         case POP_ON_EMPTY_STACK:
@@ -46,13 +46,13 @@ void PrintStackError(Error error) {
         case POPED_ELEM_NULL_PTR:
             fprintf(stderr, "Нулевой указатель на удаленный элемент\n");
             break;
-        case BIRD_ERROR:
+        case STACK_BIRD_ERROR:
             fprintf(stderr, "Канарейка: Вмешательство в буффер стэка извне\n");
             break;
-        case HANDLER_NULL_PTR:
+        case STACK_HANDLER_NULL_PTR:
             fprintf(stderr, "Попытка передать в качестве указателя на хэндлер нулевой указатель\n");
             break;
-        case HASH_ERROR:
+        case STACK_HASH_ERROR:
             fprintf(stderr, "Хэш: Вмешательство в буффер стэка извне\n");
             break;
         default:
@@ -77,158 +77,7 @@ static size_t StackHash(Stack* /* stack */) {
 }
 #endif
 
-Error StackInit(Stack* stack, size_t elem_capacity) {
-    if (stack == NULL) {
-        return STACK_NULL_PTR;
-    }
-
-    stack->capacity = max(MIN_CAPACITY, elem_capacity) + 2 * BIRD_SIZE;
-
-    stack->size = 0;
-
-    stack_elem_t* data = (stack_elem_t*)calloc(stack->capacity, sizeof(stack_elem_t)) + BIRD_SIZE;
-    if (data == NULL) {
-        return STACK_INIT_ERR;
-    }
-    stack->data = data;
-
-    for (ssize_t i = 0; i < BIRD_SIZE; i++) {
-        stack->data[- BIRD_SIZE + i] = BIRD_VALUE;
-        stack->data[(ssize_t)stack->capacity - 2 * BIRD_SIZE + i] = BIRD_VALUE;
-    }
-
-    stack->hash = StackHash(stack);
-
-    StackCheck(stack);
-
-    return OK;
-}
-
-Error StackExpantion(Stack* stack) {
-    StackCheck(stack);
-
-    if (stack == NULL) {
-        return STACK_NULL_PTR;
-    }
-
-    stack_elem_t* data = (stack_elem_t*)realloc(stack->data, stack->capacity * GROW_FACTOR * sizeof(*(stack->data)));
-    if (data == NULL) {
-        return STACK_EXPANTION_ERR;
-    }
-    stack->data = data;
-
-    for (int i = 0; i < BIRD_SIZE; i++) {
-        *(stack->data + stack->capacity - 2 * BIRD_SIZE + i) = 0;
-    }
-
-    stack->capacity *= GROW_FACTOR;
-
-    for (int i = 0; i < BIRD_SIZE; i++) {
-        *(stack->data + stack->capacity - 2 * BIRD_SIZE + i) = BIRD_VALUE;
-    }
-
-    stack->hash = StackHash(stack);
-
-    StackCheck(stack);
-
-    return OK;
-}
-
-Error StackContraction(Stack* stack) {
-    StackCheck(stack);
-
-    if (stack == NULL) {
-        return STACK_NULL_PTR;
-    }
-
-    stack_elem_t* data = (stack_elem_t*)realloc(stack->data, stack->capacity / GROW_FACTOR * sizeof(*(stack->data)));
-    if (data == NULL) {
-        return STACK_CONTRACTION_ERR;
-    }
-    stack->data = data;
-
-    for (int i = 0; i < BIRD_SIZE; i++) {
-        *(stack->data + stack->capacity - 2 * BIRD_SIZE + i) = 0;
-    }
-
-    stack->capacity /= GROW_FACTOR;
-
-    for (int i = 0; i < BIRD_SIZE; i++) {
-        *(stack->data + stack->capacity - 2 * BIRD_SIZE + i) = BIRD_VALUE;
-    }
-
-    stack->hash = StackHash(stack);
-
-    StackCheck(stack);
-
-    return OK;
-}
-
-Error StackFree(Stack* stack) {
-    StackCheck(stack);
-
-    if (stack == NULL) {
-        return STACK_NULL_PTR;
-    }
-
-    free(stack->data - BIRD_SIZE);
-
-    stack->capacity = 0;
-    stack->size = 0;
-    stack->data = NULL;
-
-    return OK;
-}
-
-Error StackAdd(Stack* stack, stack_elem_t elem) {
-    StackCheck(stack);
-
-    if (stack == NULL) {
-        return STACK_NULL_PTR;
-    }
-
-    if (stack->size == (stack->capacity - 2 * BIRD_SIZE) / GROW_FACTOR) {
-        StackExpantion(stack);
-    }
-
-    stack->data[stack->size] = elem;
-    stack->size++;
-
-    stack->hash = StackHash(stack);
-
-    StackCheck(stack);
-
-    return OK;
-}
-
-Error StackPop(Stack* stack, stack_elem_t* poped_elem) {
-    StackCheck(stack);
-
-    if (poped_elem == NULL) {
-        return POPED_ELEM_NULL_PTR;
-    }
-
-    if (stack->size == 0) {
-        return POP_ON_EMPTY_STACK;
-    }
-
-    *poped_elem = stack->data[stack->size - 1];
-
-    stack->data[stack->size - 1] = 0;
-    stack->size--;
-
-    if (stack->size == (stack->capacity - 2 * BIRD_SIZE) / GROW_FACTOR - 1) {
-        StackContraction(stack);
-    }
-
-    stack->hash = StackHash(stack);
-
-    StackCheck(stack);
-
-    return OK;
-}
-
-Error StackVerefy(Stack* stack) {
+StackError StackVerefy(Stack* stack) {
     if (stack == NULL) {
         return STACK_NULL_PTR;
     }
@@ -247,19 +96,19 @@ Error StackVerefy(Stack* stack) {
         bird = *(stack->data + stack->capacity - 2 * BIRD_SIZE + i) == BIRD_VALUE ? bird : false;
     }
     if (!bird) {
-        return BIRD_ERROR;
+        return STACK_BIRD_ERROR;
     }
 
     if (stack->hash != StackHash(stack)) {
-        return HASH_ERROR;
+        return STACK_HASH_ERROR;
     }
 
-    return OK;
+    return STACK_OK;
 }
 
-void StackDump(Stack *stack, Error error_code, const char* file, size_t line) {
+void StackDump(Stack *stack, StackError error_code, const char* file, size_t line) {
     fprintf(stderr, BRED "ERROR in %s:%lu: ", file, line);
-    PrintStackError(error_code);
+    StackPrintError(error_code);
     fprintf(stderr, reset);
 
     fprintf(stderr, BYEL "===========[STACK DUMP]==========\n" reset);
@@ -276,26 +125,177 @@ void StackDump(Stack *stack, Error error_code, const char* file, size_t line) {
     fprintf(stderr, BYEL "---------------------------------\n" reset);
 }
 
-void StdHandler(Stack* stack, Error error_code, const char* file, size_t line) {
+void StackStdHandler(Stack* stack, StackError error_code, const char* file, size_t line) {
     StackDump(stack, error_code, file, line);
 }
 
-Error SetHandler(Handler handler) {
+StackError StackSetHandler(StackHandler handler) {
     if (handler == NULL) {
-        return HANDLER_NULL_PTR;
+        return STACK_HANDLER_NULL_PTR;
     }
 
     HANDLER = handler;
 
-    return OK;
+    return STACK_OK;
 }
 
-Error SetStdHandler() {
-    HANDLER = StdHandler;
-    return OK;
+StackError StackSetStdHandler() {
+    HANDLER = StackStdHandler;
+    return STACK_OK;
 }
 
-bool Die(Stack* stack, Error error_code, const char* file, size_t line) {
+bool StackDie(Stack* stack, StackError error_code, const char* file, size_t line) {
     HANDLER(stack, error_code, file, line);
     return 0;
+}
+
+StackError StackInit(Stack* stack, size_t elem_capacity) {
+    if (stack == NULL) {
+        return STACK_NULL_PTR;
+    }
+
+    stack->capacity = max(STACK_MIN_CAPACITY, elem_capacity) + 2 * BIRD_SIZE;
+
+    stack->size = 0;
+
+    stack_elem_t* data = (stack_elem_t*)calloc(stack->capacity, sizeof(stack_elem_t)) + BIRD_SIZE;
+    if (data == NULL) {
+        return STACK_INIT_ERR;
+    }
+    stack->data = data;
+
+    for (ssize_t i = 0; i < BIRD_SIZE; i++) {
+        stack->data[- BIRD_SIZE + i] = BIRD_VALUE;
+        stack->data[(ssize_t)stack->capacity - 2 * BIRD_SIZE + i] = BIRD_VALUE;
+    }
+
+    stack->hash = StackHash(stack);
+
+    StackCheck(stack);
+
+    return STACK_OK;
+}
+
+StackError StackExpantion(Stack* stack) {
+    StackCheck(stack);
+
+    if (stack == NULL) {
+        return STACK_NULL_PTR;
+    }
+
+    stack_elem_t* data = (stack_elem_t*)realloc(stack->data, stack->capacity * STACK_GROW_FACTOR * sizeof(*(stack->data)));
+    if (data == NULL) {
+        return STACK_EXPANTION_ERR;
+    }
+    stack->data = data;
+
+    for (int i = 0; i < BIRD_SIZE; i++) {
+        *(stack->data + stack->capacity - 2 * BIRD_SIZE + i) = 0;
+    }
+
+    stack->capacity *= STACK_GROW_FACTOR;
+
+    for (int i = 0; i < BIRD_SIZE; i++) {
+        *(stack->data + stack->capacity - 2 * BIRD_SIZE + i) = BIRD_VALUE;
+    }
+
+    stack->hash = StackHash(stack);
+
+    StackCheck(stack);
+
+    return STACK_OK;
+}
+
+StackError StackContraction(Stack* stack) {
+    StackCheck(stack);
+
+    if (stack == NULL) {
+        return STACK_NULL_PTR;
+    }
+
+    stack_elem_t* data = (stack_elem_t*)realloc(stack->data, stack->capacity / STACK_GROW_FACTOR * sizeof(*(stack->data)));
+    if (data == NULL) {
+        return STACK_CONTRACTION_ERR;
+    }
+    stack->data = data;
+
+    for (int i = 0; i < BIRD_SIZE; i++) {
+        *(stack->data + stack->capacity - 2 * BIRD_SIZE + i) = 0;
+    }
+
+    stack->capacity /= STACK_GROW_FACTOR;
+
+    for (int i = 0; i < BIRD_SIZE; i++) {
+        *(stack->data + stack->capacity - 2 * BIRD_SIZE + i) = BIRD_VALUE;
+    }
+
+    stack->hash = StackHash(stack);
+
+    StackCheck(stack);
+
+    return STACK_OK;
+}
+
+StackError StackFree(Stack* stack) {
+    StackCheck(stack);
+
+    if (stack == NULL) {
+        return STACK_NULL_PTR;
+    }
+
+    free(stack->data - BIRD_SIZE);
+
+    stack->capacity = 0;
+    stack->size = 0;
+    stack->data = NULL;
+
+    return STACK_OK;
+}
+
+StackError StackPush(Stack* stack, stack_elem_t elem) {
+    StackCheck(stack);
+
+    if (stack == NULL) {
+        return STACK_NULL_PTR;
+    }
+
+    if (stack->size == (stack->capacity - 2 * BIRD_SIZE) / STACK_GROW_FACTOR) {
+        StackExpantion(stack);
+    }
+
+    stack->data[stack->size] = elem;
+    stack->size++;
+
+    stack->hash = StackHash(stack);
+
+    StackCheck(stack);
+
+    return STACK_OK;
+}
+
+StackError StackPop(Stack* stack, stack_elem_t* poped_elem) {
+    StackCheck(stack);
+
+    if (poped_elem == NULL) {
+        return POPED_ELEM_NULL_PTR;
+    }
+
+    if (stack->size == 0) {
+        return POP_ON_EMPTY_STACK;
+    }
+
+    *poped_elem = stack->data[stack->size - 1];
+
+    stack->data[stack->size - 1] = 0;
+    stack->size--;
+
+    if (stack->size == (stack->capacity - 2 * BIRD_SIZE) / STACK_GROW_FACTOR - 1) {
+        StackContraction(stack);
+    }
+
+    stack->hash = StackHash(stack);
+
+    StackCheck(stack);
+
+    return STACK_OK;
 }
