@@ -44,3 +44,5 @@ void MyVectorAdd(MyVector* vector, Line elem) {
     vector->data[vector->size] = elem;
     vector->size++;
 }
+
+//FIXME написать обработку ошибок

@@ -21,7 +21,6 @@ void TextParse(Text* text, const char* input_file_name) {
         fprintf(stderr, "Не удалось открыть файл: %s. %s\n", input_file_name, strerror(errno));
         return;
     }
-
     
     size_t file_size = FileSize(input_file);
     char* text_buffer = (char*)calloc(file_size + 2, 1);
@@ -56,10 +55,9 @@ void TextParse(Text* text, const char* input_file_name) {
 
     text->size = text_vec.size;
 
-
 }
 
-void MemoryFree(Text text) {
+void TextMemoryFree(Text text) {
     assert(text.data != NULL);
     assert(text.size != 0);
 
@@ -68,7 +66,7 @@ void MemoryFree(Text text) {
     free(text.data);
 }
 
-size_t FileSize(int file) {
+static size_t FileSize(int file) {
     struct stat stats = {};
 
     if (fstat(file, &stats) != 0) {

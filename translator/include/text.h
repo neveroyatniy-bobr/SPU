@@ -24,11 +24,11 @@ void TextParse(Text* text, const char* input_file_name);
 
 /// @brief Освобождает память, выделенную под текст.
 /// @param text Текст
-void MemoryFree(Text text);
+void TextMemoryFree(Text text);
 
 /// @brief Вычисляет размер файла
 /// @param file Указатель на файл
 /// @return Размер файла в байтах
-size_t FileSize(int file);
+static size_t FileSize(int file);
 
 #endif // TEXT_H_
