@@ -35,11 +35,11 @@ ProcessorError OUT(const int* /*args*/, Processor* processor);
 
 ProcessorError IN(const int* /*args*/, Processor* processor);
 
-ProcessorError PUSHR(const int* /*args*/, Processor* processor);
+ProcessorError PUSHR(const int* args, Processor* processor);
 
-ProcessorError POPR(const int* /*args*/, Processor* processor);
+ProcessorError POPR(const int* args, Processor* processor);
 
-ProcessorError JMP(const int* /*args*/, Processor* processor);
+ProcessorError JMP(const int* args, Processor* processor);
 
 struct Instruction {
     const char* name;
@@ -49,7 +49,17 @@ struct Instruction {
 
 static const Instruction instructions[] = {
     { .name = "PUSH", .args_count = 1, .func = PUSH },
-    { .name = "POP", .args_count = 0, .func = POP }
+    { .name = "POP", .args_count = 0, .func = POP },
+    { .name = "ADD", .args_count = 0, .func = ADD },
+    { .name = "SUB", .args_count = 0, .func = SUB },
+    { .name = "MUL", .args_count = 0, .func = MUL  },
+    { .name = "DIV", .args_count = 0, .func = DIV },
+    { .name = "SQRT", .args_count = 0, .func = SQRT },
+    { .name = "OUT", .args_count = 0, .func = OUT },
+    { .name = "IN", .args_count = 0, .func = IN },
+    { .name = "PUSHR", .args_count = 1, .func = PUSHR },
+    { .name = "POPR", .args_count = 1, .func = POPR },
+    { .name = "JMP", .args_count = 1, .func = JMP }
 };
 
 static const size_t instructions_count = sizeof(instructions) / sizeof(instructions[0]);
