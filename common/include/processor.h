@@ -20,7 +20,7 @@ typedef void (*ProcessorHandler)(Processor* processor, const char* file, size_t 
 struct Processor
 {
     Stack stack;
-    size_t regs[4];
+    int regs[8];
     IntVector program_vec;
     size_t instruction_ptr;
     ProcessorError last_error_code;
