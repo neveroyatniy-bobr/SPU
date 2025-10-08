@@ -5,11 +5,11 @@
 int main() {
     Processor* processor = NULL;
     
-    ProcessorInit(&processor);
+    PROCESSOR_DO_OR_DIE(ProcessorInit(&processor), processor);
 
-    Process(processor);
+    PROCESSOR_DO_OR_DIE(Process(processor), processor);
 
-    ProcessorFree(processor);
+    PROCESSOR_DO_OR_DIE(ProcessorFree(processor), processor);
 
     return 0;
 }
