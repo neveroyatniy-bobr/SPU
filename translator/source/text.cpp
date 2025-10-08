@@ -11,6 +11,17 @@
 
 #include "my_vector.h"
 
+static size_t FileSize(int file) {
+    struct stat stats = {};
+
+    if (fstat(file, &stats) != 0) {
+        fprintf(stderr, "Не удалось прочитать статистику файла. %s\n", strerror(errno));
+        return 0;
+    }
+
+    return (size_t)stats.st_size;
+}
+
 void TextParse(Text* text, const char* input_file_name) {
     assert(text != NULL);
     assert(input_file_name != NULL);
@@ -64,15 +75,4 @@ void TextMemoryFree(Text text) {
     free(text.buffer_start_ptr);
 
     free(text.data);
-}
-
-static size_t FileSize(int file) {
-    struct stat stats = {};
-
-    if (fstat(file, &stats) != 0) {
-        fprintf(stderr, "Не удалось прочитать статистику файла. %s\n", strerror(errno));
-        return 0;
-    }
-
-    return (size_t)stats.st_size;
 }

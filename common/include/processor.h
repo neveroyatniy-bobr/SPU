@@ -10,9 +10,8 @@ enum ProcessorError
 {
     PROCESSOR_OK               =  0,
     STACK_ERROR                =  1,
-    REGS_NULL_PTR              =  2,
-    PROCESSOR_HANDLER_NULL_PTR =  3,
-    PROCESSOR_NULL_PTR         =  4
+    PROCESSOR_HANDLER_NULL_PTR =  2,
+    PROCESSOR_NULL_PTR         =  3
 };
 
 typedef void (*ProcessorHandler)(Processor* processor, const char* file, size_t line);
@@ -53,8 +52,6 @@ bool ProcessorDie(Processor* processor, const char* file, size_t line);
 ProcessorError ProcessorInit(Processor** processor);
 
 ProcessorError ProcessorLoadBCFile(Processor* processor, const char* bytecode_file_name);
-
-static size_t FileSize(int file);
 
 ProcessorError Process(Processor* processor);
 

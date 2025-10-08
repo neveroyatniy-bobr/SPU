@@ -21,9 +21,6 @@ void ProcessorPrintError(ProcessorError error_code) {
     case STACK_ERROR:
         fprintf(stderr, "Ошибка стэка\n");
         break;
-    case REGS_NULL_PTR:
-        fprintf(stderr, "Нулевой указатеель на массив регистров\n");
-        break;
     case PROCESSOR_HANDLER_NULL_PTR:
         fprintf(stderr, "Нулевой указатель на хэндлер процессора\n");
         break;
@@ -48,10 +45,6 @@ ProcessorError ProcessorVerefy(Processor* processor)
 
     if (StackVerefy(&processor->stack) != STACK_OK) {
         return processor->last_error_code = STACK_ERROR;
-    }
-
-    if (processor->regs == NULL) {
-        return processor->last_error_code = REGS_NULL_PTR;
     }
 
     return processor->last_error_code = PROCESSOR_OK;
@@ -91,7 +84,7 @@ ProcessorError ProcessorInit(Processor** processor) {
 
     StackInit(&(*processor)->stack, 0);
     ProcessorLoadBCFile(*processor, "../program/asm.vovalox");
-    for (int reg_i = 0; reg_i < sizeof(&(*processor)->regs) / sizeof(&(*processor)->regs[0]); reg_i++) {
+    for (size_t reg_i = 0; reg_i < sizeof(&(*processor)->regs) / sizeof(&(*processor)->regs[0]); reg_i++) {
         (*processor)->regs[reg_i] = 0;
     }
     (*processor)->instruction_ptr = 0;
@@ -103,6 +96,17 @@ ProcessorError ProcessorInit(Processor** processor) {
     ProcessorCheck((*processor));
 
     return (*processor)->last_error_code = PROCESSOR_OK;
+}
+
+static size_t FileSize(int file) {
+    struct stat stats = {};
+
+    if (fstat(file, &stats) != 0) {
+        fprintf(stderr, "Не удалось прочитать статистику файла. %s\n", strerror(errno));
+        return 0;
+    }
+
+    return (size_t)stats.st_size;
 }
 
 ProcessorError ProcessorLoadBCFile(Processor* processor, const char* bytecode_file_name) {
@@ -121,19 +125,8 @@ ProcessorError ProcessorLoadBCFile(Processor* processor, const char* bytecode_fi
     return processor->last_error_code = PROCESSOR_OK;
 }
 
-static size_t FileSize(int file) {
-    struct stat stats = {};
-
-    if (fstat(file, &stats) != 0) {
-        fprintf(stderr, "Не удалось прочитать статистику файла. %s\n", strerror(errno));
-        return 0;
-    }
-
-    return (size_t)stats.st_size;
-}
-
 ProcessorError Process(Processor* processor) {
-    for (processor->instruction_ptr; processor->instruction_ptr < processor->program_vec.size; processor->instruction_ptr++) {
+    for (; processor->instruction_ptr < processor->program_vec.size; processor->instruction_ptr++) {
         Instruction instruction = instructions[processor->program_vec.data[processor->instruction_ptr]];
 
         int* args = (int*)calloc(sizeof(instruction.args_count), sizeof(int));

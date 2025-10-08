@@ -8,7 +8,7 @@
 typedef ProcessorError (*InstructionFunc) (const int* args, Processor* processor);
 
 #define PROCESSOR_STACK_DO_OR_DIE(func, processor)              \
-    func;                                                        \
+    func;                                                       \
     if (processor->stack.last_error_code != STACK_OK) {         \
         return STACK_ERROR;                                     \
     }

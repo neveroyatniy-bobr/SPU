@@ -26,9 +26,4 @@ void TextParse(Text* text, const char* input_file_name);
 /// @param text Текст
 void TextMemoryFree(Text text);
 
-/// @brief Вычисляет размер файла
-/// @param file Указатель на файл
-/// @return Размер файла в байтах
-static size_t FileSize(int file);
-
 #endif // TEXT_H_

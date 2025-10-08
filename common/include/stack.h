@@ -111,13 +111,15 @@ void StackDump(Stack* stack, const char* file, size_t line);
 void StackStdHandler(Stack* stack, const char* file, size_t line);
 
 /// @brief Устанавливает хэндлер
+/// @param Стэк
 /// @param handler Указатель на хэндлер
 /// @return Код ошибки
-StackError StackSetHandler(StackHandler handler);
+StackError StackSetHandler(Stack* stack, StackHandler handler);
 
 /// @brief Устанавливает хэндлер по умолчанию
+/// @param Стэк
 /// @return Код ошибки
-StackError StackSetStdHandler();
+StackError StackSetStdHandler(Stack* stack);
 
 /// @brief Функция которая вызывается при ошибке в макросе DO Smth(&stack) OR DIE(&stack);
 /// @param stack Стэк
