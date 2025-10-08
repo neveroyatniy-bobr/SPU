@@ -24,12 +24,18 @@ void StackPrintError(StackError error);
 
 typedef int stack_elem_t;
 
+struct Stack;
+
+typedef void (*StackHandler)(Stack* stack, const char* file, size_t line);
+
 /// @brief Сруктура, хранящая стэк
 struct Stack {
     size_t capacity;
     size_t size;
     stack_elem_t* data;
     size_t hash;
+    StackError last_error_code;
+    StackHandler handler;
 };
 
 /// @brief Минимальная вместимость стэка
@@ -46,8 +52,6 @@ static const ssize_t BIRD_SIZE = 0;
 
 /// @brief Значение канарейки
 static const stack_elem_t BIRD_VALUE = 1890165238;
-
-typedef void (*StackHandler)(Stack* stack, StackError error_code, const char* file, size_t line);
 
 /// @brief Функция иницивлизации стэка
 /// @param stack Стэк
@@ -90,25 +94,21 @@ StackError StackVerefy(Stack* stack);
 
 /// @brief Выводит информацию о поломке стэка
 /// @param stack Стэк
-/// @param error_code Код ошибки
 /// @param file Файл, в котором произошла ошибка
 /// @param line Строка, в которой произошла ошибка
-void StackDump(Stack* stack, StackError error_code, const char* file, size_t line);
+void StackDump(Stack* stack, const char* file, size_t line);
 
-#define StackCheck(stack)                         \
-    {                                             \
-        StackError err_code = StackVerefy(stack); \
-        if (err_code != STACK_OK) {               \
-            return err_code;                      \
-        }                                         \
-    }
+#define StackCheck(stack)                        \
+    stack->last_error_code = StackVerefy(stack); \
+    if (stack->last_error_code != STACK_OK) {    \
+        return stack->last_error_code;           \
+    }                                            
 
 /// @brief Стандартная функция обработки ошибок. Вызывает StackDump()
 /// @param stack Стэк
-/// @param error_code Код ошибки 
 /// @param file Файл, в котором произошла ошибка
 /// @param line Строка, в которой произошла ошибка
-void StackStdHandler(Stack* stack, StackError error_code, const char* file, size_t line);
+void StackStdHandler(Stack* stack, const char* file, size_t line);
 
 /// @brief Устанавливает хэндлер
 /// @param handler Указатель на хэндлер
@@ -124,8 +124,8 @@ StackError StackSetStdHandler();
 /// @param error_code Код ошибки
 /// @param file Файл, в котором произошла ошибка
 /// @param line Строка, в которой произошла ошибка
-bool StackDie(Stack* stack, StackError error_code, const char* file, size_t line);
+bool StackDie(Stack* stack, const char* file, size_t line);
 
-#define STACK_DO_OR_DIE(func, stack) { StackError err_code_ = OK; (OK == (err_code_ = func)) || StackDie(stack, err_code_, __FILE__, __LINE__); }
+#define STACK_DO_OR_DIE(func, stack) (STACK_OK == func) || StackDie(stack, __FILE__, __LINE__);
 
 #endif // STACK_H_

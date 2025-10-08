@@ -36,54 +36,53 @@ void ProcessorPrintError(ProcessorError error_code) {
     }
 }
 
-static ProcessorHandler HANDLER = ProcessorStdHandler;
-
 ProcessorError ProcessorVerefy(Processor* processor)
 {
     if (processor == NULL) {
-        return PROCESSOR_NULL_PTR;
+        return processor->last_error_code = PROCESSOR_NULL_PTR;
     }
 
-    StackError stack_error_code = STACK_OK;
-    if ((stack_error_code = StackVerefy(&processor->stack)) != STACK_OK)
-    {
-        return STACK_ERROR;
+    if (processor->last_error_code != PROCESSOR_OK) {
+        return processor->last_error_code;
     }
 
-    if (processor->regs == NULL)
-    {
-        return REGS_NULL_PTR;
+    if (StackVerefy(&processor->stack) != STACK_OK) {
+        return processor->last_error_code = STACK_ERROR;
     }
 
-    return PROCESSOR_OK;
+    if (processor->regs == NULL) {
+        return processor->last_error_code = REGS_NULL_PTR;
+    }
+
+    return processor->last_error_code = PROCESSOR_OK;
 }
 
-void ProcessorDump(Processor* processor, ProcessorError error_code, const char* file, size_t line) {
+void ProcessorDump(Processor* processor, const char* file, size_t line) {
     printf(BYEL "============PROCESSOR=DUMP============\n" reset);
-    StackDump(&processor->stack, StackVerefy(&processor->stack), file, line);
+    StackDump(&processor->stack, file, line);
 }
 
-void ProcessorStdHandler(Processor* processor, ProcessorError error_code, const char* file, size_t line) {
-    ProcessorDump(processor, error_code, file, line);
+void ProcessorStdHandler(Processor* processor, const char* file, size_t line) {
+    ProcessorDump(processor, file, line);
 }
 
-ProcessorError ProcessorSetHandler(ProcessorHandler handler) {
+ProcessorError ProcessorSetHandler(Processor* processor, ProcessorHandler handler) {
     if (handler == NULL) {
-        return PROCESSOR_HANDLER_NULL_PTR;
+        return processor->last_error_code = PROCESSOR_HANDLER_NULL_PTR;
     }
 
-    HANDLER = handler;
+    processor->handler = handler;
 
-    return PROCESSOR_OK;
+    return processor->last_error_code = PROCESSOR_OK;
 }
 
-ProcessorError ProcessorSetStdHandler() {
-    HANDLER = ProcessorStdHandler;
-    return PROCESSOR_OK;
+ProcessorError ProcessorSetStdHandler(Processor* processor) {
+    processor->handler = ProcessorStdHandler;
+    return processor->last_error_code = PROCESSOR_OK;
 }
 
-bool ProcessorDie(Processor* processor, ProcessorError error_code, const char* file, size_t line) {
-    HANDLER(processor, error_code, file, line);
+bool ProcessorDie(Processor* processor, const char* file, size_t line) {
+    processor->handler(processor, file, line);
     return 0;
 }
 
@@ -97,9 +96,13 @@ ProcessorError ProcessorInit(Processor** processor) {
     }
     (*processor)->instruction_ptr = 0;
 
-    ProcessorCheck(*processor);
+    (*processor)->handler = ProcessorStdHandler;
 
-    return PROCESSOR_OK;
+    (*processor)->last_error_code = PROCESSOR_OK;
+
+    ProcessorCheck((*processor));
+
+    return (*processor)->last_error_code = PROCESSOR_OK;
 }
 
 ProcessorError ProcessorLoadBCFile(Processor* processor, const char* bytecode_file_name) {
@@ -115,7 +118,7 @@ ProcessorError ProcessorLoadBCFile(Processor* processor, const char* bytecode_fi
 
     close(bytecode_file);
 
-    return PROCESSOR_OK;
+    return processor->last_error_code = PROCESSOR_OK;
 }
 
 static size_t FileSize(int file) {
@@ -142,14 +145,14 @@ ProcessorError Process(Processor* processor) {
 
         free(args);
     }
-    return PROCESSOR_OK;
+    return processor->last_error_code = PROCESSOR_OK;
 }
 
 ProcessorError ProcessorFree(Processor* processor) {
     ProcessorCheck(processor);
 
     if (processor == NULL) {
-        return PROCESSOR_NULL_PTR;
+        return processor->last_error_code = PROCESSOR_NULL_PTR;
     }
 
     StackFree(&processor->stack);

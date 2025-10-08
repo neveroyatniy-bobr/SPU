@@ -6,8 +6,6 @@
 
 #include "color.h"
 
-static StackHandler HANDLER = StackStdHandler;
-
 inline static size_t min(size_t a, size_t b) {
     return a <= b ? a : b;
 }
@@ -79,15 +77,19 @@ static size_t StackHash(Stack* /* stack */) {
 
 StackError StackVerefy(Stack* stack) {
     if (stack == NULL) {
-        return STACK_NULL_PTR;
+        return stack->last_error_code = STACK_NULL_PTR;
+    }
+
+    if (stack->last_error_code != STACK_OK) {
+        return stack->last_error_code;
     }
 
     if (stack->data == NULL) {
-        return STACK_DATA_NULL_PTR;
+        return stack->last_error_code = STACK_DATA_NULL_PTR;
     }
 
     if (stack->size > stack->capacity - 2 * BIRD_SIZE) {
-        return STACK_OVERFLOW;
+        return stack->last_error_code = STACK_OVERFLOW;
     }
 
     bool bird = true;
@@ -96,19 +98,19 @@ StackError StackVerefy(Stack* stack) {
         bird = *(stack->data + stack->capacity - 2 * BIRD_SIZE + i) == BIRD_VALUE ? bird : false;
     }
     if (!bird) {
-        return STACK_BIRD_ERROR;
+        return stack->last_error_code = STACK_BIRD_ERROR;
     }
 
     if (stack->hash != StackHash(stack)) {
-        return STACK_HASH_ERROR;
+        return stack->last_error_code = STACK_HASH_ERROR;
     }
 
-    return STACK_OK;
+    return stack->last_error_code = STACK_OK;
 }
 
-void StackDump(Stack *stack, StackError error_code, const char* file, size_t line) {
+void StackDump(Stack *stack, const char* file, size_t line) {
     fprintf(stderr, BRED "ERROR in %s:%lu: ", file, line);
-    StackPrintError(error_code);
+    StackPrintError(stack->last_error_code);
     fprintf(stderr, reset);
 
     fprintf(stderr, BYEL "===========[STACK DUMP]==========\n" reset);
@@ -125,33 +127,33 @@ void StackDump(Stack *stack, StackError error_code, const char* file, size_t lin
     fprintf(stderr, BYEL "---------------------------------\n" reset);
 }
 
-void StackStdHandler(Stack* stack, StackError error_code, const char* file, size_t line) {
-    StackDump(stack, error_code, file, line);
+void StackStdHandler(Stack* stack, const char* file, size_t line) {
+    StackDump(stack, file, line);
 }
 
-StackError StackSetHandler(StackHandler handler) {
-    if (handler == NULL) {
-        return STACK_HANDLER_NULL_PTR;
+StackError StackSetHandler(Stack* stack, StackHandler handler) {
+    if (stack->handler == NULL) {
+        return stack->last_error_code = STACK_HANDLER_NULL_PTR;
     }
 
-    HANDLER = handler;
+    stack->handler = handler;
 
-    return STACK_OK;
+    return stack->last_error_code = STACK_OK;
 }
 
-StackError StackSetStdHandler() {
-    HANDLER = StackStdHandler;
-    return STACK_OK;
+StackError StackSetStdHandler(Stack* stack) {
+    stack->handler = StackStdHandler;
+    return stack->last_error_code = STACK_OK;
 }
 
-bool StackDie(Stack* stack, StackError error_code, const char* file, size_t line) {
-    HANDLER(stack, error_code, file, line);
+bool StackDie(Stack* stack, const char* file, size_t line) {
+    stack->handler(stack, file, line);
     return 0;
 }
 
 StackError StackInit(Stack* stack, size_t elem_capacity) {
     if (stack == NULL) {
-        return STACK_NULL_PTR;
+        return stack->last_error_code = STACK_NULL_PTR;
     }
 
     stack->capacity = max(STACK_MIN_CAPACITY, elem_capacity) + 2 * BIRD_SIZE;
@@ -160,7 +162,7 @@ StackError StackInit(Stack* stack, size_t elem_capacity) {
 
     stack_elem_t* data = (stack_elem_t*)calloc(stack->capacity, sizeof(stack_elem_t)) + BIRD_SIZE;
     if (data == NULL) {
-        return STACK_INIT_ERR;
+        return stack->last_error_code = STACK_INIT_ERR;
     }
     stack->data = data;
 
@@ -171,21 +173,25 @@ StackError StackInit(Stack* stack, size_t elem_capacity) {
 
     stack->hash = StackHash(stack);
 
+    stack->last_error_code = STACK_OK;
+
+    stack->handler = StackStdHandler;
+
     StackCheck(stack);
 
-    return STACK_OK;
+    return stack->last_error_code = STACK_OK;
 }
 
 StackError StackExpantion(Stack* stack) {
     StackCheck(stack);
 
     if (stack == NULL) {
-        return STACK_NULL_PTR;
+        return stack->last_error_code = STACK_NULL_PTR;
     }
 
     stack_elem_t* data = (stack_elem_t*)realloc(stack->data, stack->capacity * STACK_GROW_FACTOR * sizeof(*(stack->data)));
     if (data == NULL) {
-        return STACK_EXPANTION_ERR;
+        return stack->last_error_code = STACK_EXPANTION_ERR;
     }
     stack->data = data;
 
@@ -203,19 +209,19 @@ StackError StackExpantion(Stack* stack) {
 
     StackCheck(stack);
 
-    return STACK_OK;
+    return stack->last_error_code = STACK_OK;
 }
 
 StackError StackContraction(Stack* stack) {
     StackCheck(stack);
 
     if (stack == NULL) {
-        return STACK_NULL_PTR;
+        return stack->last_error_code = STACK_NULL_PTR;
     }
 
     stack_elem_t* data = (stack_elem_t*)realloc(stack->data, stack->capacity / STACK_GROW_FACTOR * sizeof(*(stack->data)));
     if (data == NULL) {
-        return STACK_CONTRACTION_ERR;
+        return stack->last_error_code = STACK_CONTRACTION_ERR;
     }
     stack->data = data;
 
@@ -233,14 +239,14 @@ StackError StackContraction(Stack* stack) {
 
     StackCheck(stack);
 
-    return STACK_OK;
+    return stack->last_error_code = STACK_OK;
 }
 
 StackError StackFree(Stack* stack) {
     StackCheck(stack);
 
     if (stack == NULL) {
-        return STACK_NULL_PTR;
+        return stack->last_error_code = STACK_NULL_PTR;
     }
 
     free(stack->data - BIRD_SIZE);
@@ -249,14 +255,14 @@ StackError StackFree(Stack* stack) {
     stack->size = 0;
     stack->data = NULL;
 
-    return STACK_OK;
+    return stack->last_error_code = STACK_OK;
 }
 
 StackError StackPush(Stack* stack, stack_elem_t elem) {
     StackCheck(stack);
 
     if (stack == NULL) {
-        return STACK_NULL_PTR;
+        return stack->last_error_code = STACK_NULL_PTR;
     }
 
     if (stack->size == (stack->capacity - 2 * BIRD_SIZE) / STACK_GROW_FACTOR) {
@@ -270,18 +276,18 @@ StackError StackPush(Stack* stack, stack_elem_t elem) {
 
     StackCheck(stack);
 
-    return STACK_OK;
+    return stack->last_error_code = STACK_OK;
 }
 
 StackError StackPop(Stack* stack, stack_elem_t* poped_elem) {
     StackCheck(stack);
 
     if (poped_elem == NULL) {
-        return POPED_ELEM_NULL_PTR;
+        return stack->last_error_code = POPED_ELEM_NULL_PTR;
     }
 
     if (stack->size == 0) {
-        return POP_ON_EMPTY_STACK;
+        return stack->last_error_code = POP_ON_EMPTY_STACK;
     }
 
     *poped_elem = stack->data[stack->size - 1];
@@ -297,5 +303,5 @@ StackError StackPop(Stack* stack, stack_elem_t* poped_elem) {
 
     StackCheck(stack);
 
-    return STACK_OK;
+    return stack->last_error_code = STACK_OK;
 }

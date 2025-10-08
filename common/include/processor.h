@@ -4,13 +4,7 @@
 #include "stack.h"
 #include "int_vector.h"
 
-struct Processor
-{
-    Stack stack;
-    size_t regs[4];
-    IntVector program_vec;
-    size_t instruction_ptr;
-};
+struct Processor;
 
 enum ProcessorError
 {
@@ -21,33 +15,40 @@ enum ProcessorError
     PROCESSOR_NULL_PTR         =  4
 };
 
+typedef void (*ProcessorHandler)(Processor* processor, const char* file, size_t line);
+
+struct Processor
+{
+    Stack stack;
+    size_t regs[4];
+    IntVector program_vec;
+    size_t instruction_ptr;
+    ProcessorError last_error_code;
+    ProcessorHandler handler;
+};
+
 /// @brief Выводит сообщение об ошибке процессора в stderr
 /// @param error_code Код ошибки
 void ProcessorPrintError(ProcessorError error_code);
 
-typedef void (*ProcessorHandler)(Processor* processor, ProcessorError error_code, const char* file, size_t line);
-
 ProcessorError ProcessorVerefy(Processor* processor);
 
 #define ProcessorCheck(processor)                                 \
-    {                                                             \
-        ProcessorError _error_code = ProcessorVerefy(processor);  \
-        if (_error_code != PROCESSOR_OK) {                        \
-            return _error_code;                                   \
+        if (processor->last_error_code != PROCESSOR_OK) {         \
+            return processor->last_error_code;                    \
         }                                                         \
-    }                                                             
 
-void ProcessorDump(Processor* processor, ProcessorError error_code, const char* file, size_t line);
+void ProcessorDump(Processor* processor, const char* file, size_t line);
 
-void ProcessorStdHandler(Processor* processor, ProcessorError error_code, const char* file, size_t line);
+void ProcessorStdHandler(Processor* processor, const char* file, size_t line);
 
-ProcessorError ProcessorSetHandler(ProcessorHandler handler);
+ProcessorError ProcessorSetHandler(Processor* processor, ProcessorHandler handler);
 
-ProcessorError ProcessorSetStdHandler();
+ProcessorError ProcessorSetStdHandler(Processor* processor);
 
-bool ProcessorDie(Processor* processor, ProcessorError error_code, const char* file, size_t line);
+bool ProcessorDie(Processor* processor, const char* file, size_t line);
 
-#define PROCESSOR_DO_OR_DIE(func, processor) { ProcessorError err_code_ = PROCESSOR_OK; (PROCESSOR_OK == (err_code_ = func)) || ProcessorDie(processor, err_code_, __FILE__, __LINE__); }
+#define PROCESSOR_DO_OR_DIE(func, processor) (PROCESSOR_OK == func) || ProcessorDie(processor, __FILE__, __LINE__);
 
 ProcessorError ProcessorInit(Processor** processor);
 
