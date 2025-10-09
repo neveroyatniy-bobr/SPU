@@ -34,7 +34,7 @@ void TextParse(Text* text, const char* input_file_name) {
     }
     
     size_t file_size = FileSize(input_file);
-    char* text_buffer = (char*)calloc(file_size + 2, 1);
+    char* text_buffer = (char*)calloc(file_size + 2, sizeof(char));
     text->buffer_start_ptr = text_buffer;
     
     ssize_t true_file_size = read(input_file, text_buffer, file_size);

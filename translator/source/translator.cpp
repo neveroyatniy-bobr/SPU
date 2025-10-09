@@ -40,8 +40,8 @@ void Translate(const char* asm_file_name, const char* bytecode_file_name) {
 
     TextMemoryFree(program);
 
-    FILE* bytecode_file = NULL;
-    if ((bytecode_file = fopen(bytecode_file_name, "w")) == NULL) {
+    FILE* bytecode_file = fopen(bytecode_file_name, "w");
+    if (bytecode_file == NULL) {
         fprintf(stderr, "Не удалось создать файл. %s\n", strerror(errno));
         return;
     }
@@ -53,7 +53,7 @@ void Translate(const char* asm_file_name, const char* bytecode_file_name) {
     IntVectorFree(&program_vec);
 }
 
-char* BCFileName(char* asm_file_name) {
+char* BytecodeFileName(char* asm_file_name) {
     size_t asm_file_name_len = strlen(asm_file_name);
     char* bytecode_file_name = (char*)calloc(asm_file_name_len + sizeof(".vovalox"), 1);
     strcpy(bytecode_file_name, asm_file_name);
