@@ -172,3 +172,36 @@ ProcessorError JMP(const int* args, Processor* processor) {
 
     return PROCESSOR_OK;
 }
+
+#define DefJ(name, operator) \
+    ProcessorError J##name(const int* args, Processor* processor) {            \
+        ProcessorCheck(processor);                                             \
+                                                                               \
+        int a = 0;                                                             \
+        int b = 0;                                                             \
+                                                                               \
+        PROCESSOR_STACK_DO_OR_DIE(StackPop(&processor->stack, &a), processor); \
+        PROCESSOR_STACK_DO_OR_DIE(StackPop(&processor->stack, &b), processor); \
+                                                                               \
+        if (a operator b) {                                                    \
+            size_t adress = (size_t)args[0];                                   \
+                                                                               \
+            processor->instruction_ptr = adress - 1;                           \
+                                                                               \
+            ProcessorCheck(processor);                                         \
+        }                                                                      \
+                                                                               \
+        return PROCESSOR_OK;                                                   \
+    }
+
+DefJ(E, ==);
+
+DefJ(NE, !=);
+
+DefJ(B, <);
+
+DefJ(BE, <=);
+
+DefJ(A, >);
+
+DefJ(AE, >=);

@@ -41,6 +41,18 @@ ProcessorError POPR(const int* args, Processor* processor);
 
 ProcessorError JMP(const int* args, Processor* processor);
 
+ProcessorError JE(const int* args, Processor* processor);
+
+ProcessorError JNE(const int* args, Processor* processor);
+
+ProcessorError JB(const int* args, Processor* processor);
+
+ProcessorError JBE(const int* args, Processor* processor);
+
+ProcessorError JA(const int* args, Processor* processor);
+
+ProcessorError JAE(const int* args, Processor* processor);
+
 struct Instruction {
     const char* name;
     const size_t args_count;
@@ -59,7 +71,13 @@ static const Instruction instructions[] = {
     { .name = "IN", .args_count = 0, .func = IN },
     { .name = "PUSHR", .args_count = 1, .func = PUSHR },
     { .name = "POPR", .args_count = 1, .func = POPR },
-    { .name = "JMP", .args_count = 1, .func = JMP }
+    { .name = "JMP", .args_count = 1, .func = JMP }, 
+    { .name = "JE", .args_count = 1, .func = JE }, 
+    { .name = "JNE", .args_count = 1, .func = JNE }, 
+    { .name = "JB", .args_count = 1, .func = JB }, 
+    { .name = "JBE", .args_count = 1, .func = JBE }, 
+    { .name = "JA", .args_count = 1, .func = JA }, 
+    { .name = "JAE", .args_count = 1, .func = JAE },
 };
 
 static const size_t instructions_count = sizeof(instructions) / sizeof(instructions[0]);
