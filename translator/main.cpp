@@ -8,6 +8,7 @@ int main(int argc, char** argv) {
         char* bytecode_file_name = BytecodeFileName(asm_file_name);
 
         Translate(asm_file_name, bytecode_file_name);
+
         free(bytecode_file_name);
     }
 }
