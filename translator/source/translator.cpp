@@ -40,82 +40,84 @@ void PredBytecodeConstructor(Text* program, IntVector* label_vec) {
 
         while (line->data[0] == ' ') {
             line->data++;
+            line->size--;
         }
 
         char* end_of_line = strchr(line->data, ';');
-        size_t new_line_size = (size_t)(end_of_line - line->data) + 1;
-        if (new_line_size > line->size) {
-            fprintf(stderr, "Пропущена ;\n");
-            printf("line: %lu\n", line_i + 1);
-            for (int i = 0; i < line->size; i++) {
-                putc(line->data[i], stdout);
+
+        size_t new_line_size = (size_t)(end_of_line - line->data);
+
+        if (line->size != 0) {
+            if (end_of_line == NULL) {
+                fprintf(stdout, "new_line_size = %lu, line->size = %lu\n", new_line_size, line->size);
+                fprintf(stderr, "Пропущена ;\n");
+                printf("line: %lu\n", line_i + 1);
+                return;
             }
-            putc('\n', stdout);
-            return;
-        }
 
-        *end_of_line = '\0';
-        line->size = new_line_size;
+            *end_of_line = '\0';
+            line->size = new_line_size;
 
-        char* instruction_name = NULL;
-        instruction_name = strtok(line->data, " ");
-        bool is_instruction = false;
-        size_t true_args_count;
+            char* instruction_name = NULL;
+            instruction_name = strtok(line->data, " ");
+            bool is_instruction = false;
+            size_t true_args_count;
 
-        for (size_t instruction_i = 0; instruction_i < instructions_count; instruction_i++) {
-            if (strcmp(instruction_name, instructions[instruction_i].name) == 0) {
-                true_args_count = instructions[instruction_i].args_count;
-                is_instruction = true;
+            for (size_t instruction_i = 0; instruction_i < instructions_count; instruction_i++) {
+                if (strcmp(instruction_name, instructions[instruction_i].name) == 0) {
+                    true_args_count = instructions[instruction_i].args_count;
+                    is_instruction = true;
+                    instruction_pointer++;
+                }
+            }
+
+            char* arg = NULL;
+            size_t args_count = 0;
+            while ((arg = strtok(NULL, " ")) != NULL) {
+                args_count++;
                 instruction_pointer++;
             }
-        }
 
-        char* arg = NULL;
-        size_t args_count = 0;
-        while ((arg = strtok(NULL, " ")) != NULL) {
-            args_count++;
-            instruction_pointer++;
-        }
+            if (instruction_name[0] == ':') {
+                is_instruction = true;
 
-        if (instruction_name[0] == ':') {
-            is_instruction = true;
+                if (args_count > 0) {
+                    fprintf(stderr, "У метки не может быть аргументов\n");
+                    printf("line: %lu\n", line_i + 1);
+                    return;
+                }
 
-            if (args_count > 0) {
-                fprintf(stderr, "У метки не может быть аргументов\n");
-                printf("line: %lu\n", line_i + 1);
-                return;
-            }
+                size_t label_num = (size_t)atol(instruction_name + 1);
+                if (label_num == 0) {
+                    fprintf(stderr, "Неверное имя метки\n");
+                    printf("line: %lu\n", line_i + 1);
+                    return;
+                }
 
-            size_t label_num = (size_t)atol(instruction_name + 1);
-            if (label_num == 0) {
-                fprintf(stderr, "Неверное имя метки\n");
-                printf("line: %lu\n", line_i + 1);
-                return;
-            }
+                if (label_vec->size <= label_num) {
+                    label_vec->capacity = (label_num + 1) * 2;
+                    label_vec->data = (int*)realloc(label_vec->data, label_vec->capacity * sizeof(label_vec->data[0]));
 
-            if (label_vec->size <= label_num) {
-                label_vec->capacity = (label_num + 1) * 2;
-                label_vec->data = (int*)realloc(label_vec->data, label_vec->capacity * sizeof(label_vec->data[0]));
-
-                label_vec->data[label_num] = instruction_pointer;
-                label_vec->size = label_num + 1;
+                    label_vec->data[label_num] = instruction_pointer;
+                    label_vec->size = label_num + 1;
+                }
+                else {
+                    label_vec->data[label_num] = instruction_pointer;
+                }
             }
             else {
-                label_vec->data[label_num] = instruction_pointer;
+                if (args_count != true_args_count) {
+                    fprintf(stderr, "Неверное количество аргументов у инструкции\n");
+                    printf("line: %lu\n", line_i + 1);
+                    return;
+                }
             }
-        }
-        else {
-            if (args_count != true_args_count) {
-                fprintf(stderr, "Неверное количество аргументов у инструкции\n");
+
+            if (!is_instruction) {
+                fprintf(stderr, "Несуществующая инструкция: %s\n", instruction_name);
                 printf("line: %lu\n", line_i + 1);
                 return;
             }
-        }
-
-        if (!is_instruction) {
-            fprintf(stderr, "Несуществующая инструкция: %s\n", instruction_name);
-            printf("line: %lu\n", line_i + 1);
-            return;
         }
     }
 }

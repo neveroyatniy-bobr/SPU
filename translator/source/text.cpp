@@ -57,9 +57,7 @@ void TextParse(Text* text, const char* input_file_name) {
 
         Line current_line = { .data = current_line_ptr, .size = (size_t)(next_line_ptr - current_line_ptr - 1) };
         
-        if (current_line.size > 0) {
-            MyVectorAdd(&text_vec, current_line);
-        }
+        MyVectorAdd(&text_vec, current_line);
     }
 
     text->data = text_vec.data;
