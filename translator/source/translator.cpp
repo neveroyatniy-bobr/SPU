@@ -46,13 +46,19 @@ void PredBytecodeConstructor(Text* program, IntVector* label_vec) {
         size_t new_line_size = (size_t)(end_of_line - line->data) + 1;
         if (new_line_size > line->size) {
             fprintf(stderr, "Пропущена ;\n");
+            printf("line: %lu\n", line_i + 1);
+            for (int i = 0; i < line->size; i++) {
+                putc(line->data[i], stdout);
+            }
+            putc('\n', stdout);
             return;
         }
 
         *end_of_line = '\0';
         line->size = new_line_size;
 
-        char* instruction_name = strtok(line->data, " ");
+        char* instruction_name = NULL;
+        instruction_name = strtok(line->data, " ");
         bool is_instruction = false;
         size_t true_args_count;
 
@@ -75,13 +81,15 @@ void PredBytecodeConstructor(Text* program, IntVector* label_vec) {
             is_instruction = true;
 
             if (args_count > 0) {
-                fprintf(stderr ,"У метки не может быть аргументов\n");
+                fprintf(stderr, "У метки не может быть аргументов\n");
+                printf("line: %lu\n", line_i + 1);
                 return;
             }
 
             size_t label_num = (size_t)atol(instruction_name + 1);
             if (label_num == 0) {
                 fprintf(stderr, "Неверное имя метки\n");
+                printf("line: %lu\n", line_i + 1);
                 return;
             }
 
@@ -99,12 +107,14 @@ void PredBytecodeConstructor(Text* program, IntVector* label_vec) {
         else {
             if (args_count != true_args_count) {
                 fprintf(stderr, "Неверное количество аргументов у инструкции\n");
+                printf("line: %lu\n", line_i + 1);
                 return;
             }
         }
 
         if (!is_instruction) {
             fprintf(stderr, "Несуществующая инструкция: %s\n", instruction_name);
+            printf("line: %lu\n", line_i + 1);
             return;
         }
     }

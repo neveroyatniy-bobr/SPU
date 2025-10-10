@@ -13,7 +13,7 @@ ProcessorError PUSH(const int* args, Processor* processor) {
 
     ProcessorCheck(processor);
 
-    return PROCESSOR_OK;
+    return processor->last_error_code = PROCESSOR_OK;
 }
 
 ProcessorError POP(const int* /*args*/, Processor* processor) {
@@ -23,12 +23,12 @@ ProcessorError POP(const int* /*args*/, Processor* processor) {
     StackError error_code = StackPop(&processor->stack, &poped_elem);
 
     if (error_code != STACK_OK) {
-        return STACK_ERROR;
+        return processor->last_error_code = STACK_ERROR;
     }
 
     ProcessorCheck(processor);
 
-    return PROCESSOR_OK;
+    return processor->last_error_code = PROCESSOR_OK;
 }
 
 ProcessorError ADD(const int* /*args*/, Processor* processor) {
@@ -44,7 +44,7 @@ ProcessorError ADD(const int* /*args*/, Processor* processor) {
 
     ProcessorCheck(processor);
 
-    return PROCESSOR_OK;
+    return processor->last_error_code = PROCESSOR_OK;
 }
 
 ProcessorError SUB(const int* /*args*/, Processor* processor) {
@@ -60,7 +60,7 @@ ProcessorError SUB(const int* /*args*/, Processor* processor) {
 
     ProcessorCheck(processor);
 
-    return PROCESSOR_OK;
+    return processor->last_error_code = PROCESSOR_OK;
 }
 
 ProcessorError MUL(const int* /*args*/, Processor* processor) {
@@ -76,7 +76,7 @@ ProcessorError MUL(const int* /*args*/, Processor* processor) {
 
     ProcessorCheck(processor);
 
-    return PROCESSOR_OK;
+    return processor->last_error_code = PROCESSOR_OK;
 }
 
 ProcessorError DIV(const int* /*args*/, Processor* processor) {
@@ -92,7 +92,7 @@ ProcessorError DIV(const int* /*args*/, Processor* processor) {
 
     ProcessorCheck(processor);
 
-    return PROCESSOR_OK;
+    return processor->last_error_code = PROCESSOR_OK;
 }
 
 ProcessorError SQRT(const int* /*args*/, Processor* processor) {
@@ -106,7 +106,7 @@ ProcessorError SQRT(const int* /*args*/, Processor* processor) {
 
     ProcessorCheck(processor);
 
-    return PROCESSOR_OK;
+    return processor->last_error_code = PROCESSOR_OK;
 }
 
 ProcessorError OUT(const int* /*args*/, Processor* processor) {
@@ -120,7 +120,7 @@ ProcessorError OUT(const int* /*args*/, Processor* processor) {
 
     ProcessorCheck(processor);
 
-    return PROCESSOR_OK;
+    return processor->last_error_code = PROCESSOR_OK;
 }
 
 ProcessorError IN(const int* /*args*/, Processor* processor) {
@@ -134,7 +134,7 @@ ProcessorError IN(const int* /*args*/, Processor* processor) {
 
     ProcessorCheck(processor);
 
-    return PROCESSOR_OK;
+    return processor->last_error_code = PROCESSOR_OK;
 }
 
 ProcessorError PUSHR(const int* args, Processor* processor) {
@@ -146,7 +146,7 @@ ProcessorError PUSHR(const int* args, Processor* processor) {
 
     ProcessorCheck(processor);
 
-    return PROCESSOR_OK;
+    return processor->last_error_code = PROCESSOR_OK;
 }
 
 ProcessorError POPR(const int* args, Processor* processor) {
@@ -158,7 +158,7 @@ ProcessorError POPR(const int* args, Processor* processor) {
 
     ProcessorCheck(processor);
 
-    return PROCESSOR_OK;
+    return processor->last_error_code = PROCESSOR_OK;
 }
 
 ProcessorError JMP(const int* args, Processor* processor) {
@@ -170,7 +170,7 @@ ProcessorError JMP(const int* args, Processor* processor) {
 
     ProcessorCheck(processor);
 
-    return PROCESSOR_OK;
+    return processor->last_error_code = PROCESSOR_OK;
 }
 
 #define DefJ(name, operator) \
@@ -191,7 +191,7 @@ ProcessorError JMP(const int* args, Processor* processor) {
             ProcessorCheck(processor);                                         \
         }                                                                      \
                                                                                \
-        return PROCESSOR_OK;                                                   \
+        return processor->last_error_code = PROCESSOR_OK;                      \
     }
 
 DefJ(E, ==);
@@ -205,3 +205,7 @@ DefJ(BE, <=);
 DefJ(A, >);
 
 DefJ(AE, >=);
+
+ProcessorError COM(const int* /*args*/, Processor* processor) {
+    return processor->last_error_code = PROCESSOR_OK;
+}

@@ -10,7 +10,7 @@ typedef ProcessorError (*InstructionFunc) (const int* args, Processor* processor
 #define PROCESSOR_STACK_DO_OR_DIE(func, processor)              \
     func;                                                       \
     if (processor->stack.last_error_code != STACK_OK) {         \
-        return STACK_ERROR;                                     \
+        return processor->last_error_code = STACK_ERROR;        \
     }
 
 /// @brief Добавляет elem в конец стэка
@@ -53,6 +53,8 @@ ProcessorError JA(const int* args, Processor* processor);
 
 ProcessorError JAE(const int* args, Processor* processor);
 
+ProcessorError COM(const int* /*args*/, Processor* processor);
+
 struct Instruction {
     const char* name;
     const size_t args_count;
@@ -78,6 +80,7 @@ static const Instruction instructions[] = {
     { .name = "JBE", .args_count = 1, .func = JBE }, 
     { .name = "JA", .args_count = 1, .func = JA }, 
     { .name = "JAE", .args_count = 1, .func = JAE },
+    { .name = "COM", .args_count = 0, .func = COM },
 };
 
 static const size_t instructions_count = sizeof(instructions) / sizeof(instructions[0]);
