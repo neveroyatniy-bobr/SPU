@@ -6,7 +6,7 @@
 void IntVectorInit(IntVector* vector, size_t capacity) {
     assert(vector != NULL);
 
-    vector->capacity = capacity >= MIN_CAPACITY ? capacity : MIN_CAPACITY;
+    vector->capacity = capacity >= INT_VECTOR_MIN_CAPACITY ? capacity : INT_VECTOR_MIN_CAPACITY;
 
     vector->size = 0;
 
@@ -16,12 +16,12 @@ void IntVectorInit(IntVector* vector, size_t capacity) {
 void IntVectorRealloc(IntVector* vector) {
     assert(vector != NULL);
 
-    int* data = (int*)realloc(vector->data, vector->capacity * GROW_FACTOR * sizeof(*(vector->data)));
+    int* data = (int*)realloc(vector->data, vector->capacity * INT_VECTOR_GROW_FACTOR * sizeof(*(vector->data)));
     if (data != NULL) {
         vector->data = data;
     }
 
-    vector->capacity *= GROW_FACTOR;
+    vector->capacity *= INT_VECTOR_GROW_FACTOR;
 }
 
 void IntVectorFree(IntVector* vector) {

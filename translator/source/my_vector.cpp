@@ -6,22 +6,22 @@
 void MyVectorInit(MyVector* vector, size_t capacity) {
     assert(vector != NULL);
 
-    vector->capacity = capacity >= MIN_CAPACITY ? capacity : MIN_CAPACITY;
+    vector->capacity = capacity >= MY_VECTOR_MIN_CAPACITY ? capacity : MY_VECTOR_MIN_CAPACITY;
 
     vector->size = 0;
 
-    vector->data = (Line*)calloc(capacity, sizeof(Line));
+    vector->data = (Line*)calloc(vector->capacity, sizeof(Line));
 }
 
 void MyVectorRealloc(MyVector* vector) {
     assert(vector != NULL);
 
-    Line* data = (Line*)realloc(vector->data, vector->capacity * GROW_FACTOR * sizeof(*(vector->data)));
+    Line* data = (Line*)realloc(vector->data, vector->capacity * MY_VECTOR_GROW_FACTOR * sizeof(*(vector->data)));
     if (data != NULL) {
         vector->data = data;
     }
 
-    vector->capacity *= GROW_FACTOR;
+    vector->capacity *= MY_VECTOR_GROW_FACTOR;
 }
 
 void MyVectorFree(MyVector* vector) {

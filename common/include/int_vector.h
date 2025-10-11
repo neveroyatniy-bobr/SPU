@@ -1,12 +1,12 @@
-#ifndef VECTOR_H_
-#define VECTOR_H_
+#ifndef INT_VECTOR_H_
+#define INT_VECTOR_H_
 
 #include <stdlib.h>
 
 /// @brief Минимальная вместимость вектора
-static const size_t MIN_CAPACITY = 16;
+static const size_t INT_VECTOR_MIN_CAPACITY = 16;
 /// @brief Фактор увеличения вместимости вектора при переполнении
-static const size_t GROW_FACTOR = 2;
+static const size_t INT_VECTOR_GROW_FACTOR = 2;
 
 /// @brief Структура, хранящая Вектор
 struct IntVector {
@@ -33,4 +33,4 @@ void IntVectorFree(IntVector* vector);
 /// @param elem Элемент
 void IntVectorAdd(IntVector* vector, int elem);
 
-#endif // VECTOR_H_
+#endif // INT_VECTOR_H_

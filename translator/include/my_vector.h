@@ -1,14 +1,14 @@
-#ifndef VECTOR_H_
-#define VECTOR_H_
+#ifndef MY_VECTOR_H_
+#define MY_VECTOR_H_
 
 #include <stdlib.h>
 
 #include "text.h"
 
 /// @brief Минимальная вместимость вектора
-static const size_t MIN_CAPACITY = 16;
+static const size_t MY_VECTOR_MIN_CAPACITY = 16;
 /// @brief Фактор увеличения вместимости вектора при переполнении
-static const size_t GROW_FACTOR = 2;
+static const size_t MY_VECTOR_GROW_FACTOR = 2;
 
 /// @brief Структура, хранящая Вектор
 struct MyVector {
@@ -35,4 +35,4 @@ void MyVectorFree(MyVector* vector);
 /// @param elem Элемент
 void MyVectorAdd(MyVector* vector, Line elem);
 
-#endif // VECTOR_H_
+#endif // MY_VECTOR_H_

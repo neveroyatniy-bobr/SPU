@@ -8,22 +8,28 @@
 #include "text.h"
 #include "instructions.h"
 #include "int_vector.h"
+#include "labels_vec.h"
+
+// FIXME Нормально разбить на функции
+// FIXME Добавить структуру Translator
+// FIXME Мб разбить на файлы
+// FIXME Добавить полную обработку ошибок для все структур с дампами
 
 void Translate(const char* asm_file_name, const char* bytecode_file_name) {
     IntVector program_vec = {};
     IntVectorInit(&program_vec, 0);
 
-    IntVector label_vec = {};
-    IntVectorInit(&label_vec, 0);
+    LabelsVec labels_vec = {};
+    LabelsVecInit(&labels_vec);
 
     char reg_names[8][32] = { "RAX", "RBX", "RCX", "RDX", "REX", "RFX", "RGX", "RHX" };
 
     Text program = {};
     TextParse(&program, asm_file_name);
 
-    PredBytecodeConstructor(&program, &label_vec, reg_names);
+    PredBytecodeConstructor(&program, &labels_vec, reg_names);
 
-    ProgramVecConstructor(&program, &program_vec, &label_vec, reg_names);
+    ProgramVecConstructor(&program, &program_vec, &labels_vec, reg_names);
 
     TextMemoryFree(program);
 
@@ -31,7 +37,7 @@ void Translate(const char* asm_file_name, const char* bytecode_file_name) {
 
     IntVectorFree(&program_vec);
 
-    IntVectorFree(&label_vec);
+    LabelsVecFree(&labels_vec);
 }
 
 static bool IsStrInt(const char* str) {
@@ -45,7 +51,7 @@ static bool IsStrInt(const char* str) {
     return false;
 }
 
-void PredBytecodeConstructor(Text* program, IntVector* label_vec, char reg_names[8][32]) {
+void PredBytecodeConstructor(Text* program, LabelsVec* labels_vec, char reg_names[8][32]) {
     int instruction_pointer = 0;
 
     for (size_t line_i = 0; line_i < program->size; line_i++) {
@@ -62,7 +68,6 @@ void PredBytecodeConstructor(Text* program, IntVector* label_vec, char reg_names
 
         if (line->size != 0) {
             if (end_of_line == NULL) {
-                fprintf(stdout, "new_line_size = %lu, line->size = %lu\n", new_line_size, line->size);
                 fprintf(stderr, "Пропущена ;\n");
                 printf("line: %lu\n", line_i + 1);
                 return;
@@ -100,23 +105,9 @@ void PredBytecodeConstructor(Text* program, IntVector* label_vec, char reg_names
                     return;
                 }
 
-                size_t label_num = (size_t)atol(instruction_name + 1);
-                if (label_num == 0) {
-                    fprintf(stderr, "Неверное имя метки\n");
-                    printf("line: %lu\n", line_i + 1);
-                    return;
-                }
-
-                if (label_vec->size <= label_num) {
-                    label_vec->capacity = (label_num + 1) * 2;
-                    label_vec->data = (int*)realloc(label_vec->data, label_vec->capacity * sizeof(label_vec->data[0]));
-
-                    label_vec->data[label_num] = instruction_pointer;
-                    label_vec->size = label_num + 1;
-                }
-                else {
-                    label_vec->data[label_num] = instruction_pointer;
-                }
+                Line label_name = { instruction_name + 1, strlen(instruction_name + 1) };
+                int label_adress = instruction_pointer;
+                LabelsVecAdd(labels_vec, label_name, label_adress);
             }
             else if (strcmp(instruction_name, "ALIAS") == 0) {
                 true_args_count = 2;
@@ -169,7 +160,7 @@ void PredBytecodeConstructor(Text* program, IntVector* label_vec, char reg_names
     }
 }
 
-void ProgramVecConstructor(Text* program, IntVector* program_vec, IntVector* label_vec, char reg_names[8][32]) {
+void ProgramVecConstructor(Text* program, IntVector* program_vec, LabelsVec* labels_vec, char reg_names[8][32]) {
     for (size_t line_i = 0; line_i < program->size; line_i++) {
         Line line = program->data[line_i];
 
@@ -184,8 +175,12 @@ void ProgramVecConstructor(Text* program, IntVector* program_vec, IntVector* lab
         char* arg = strchr(instruction_name, '\0') + 1;
         while (arg - line.data < (ssize_t)line.size) {
             if (arg[0] == ':') {
-                size_t label_num = (size_t)atol(arg + 1);
-                IntVectorAdd(program_vec, label_vec->data[label_num]);
+                for (size_t label_i = 0; label_i < labels_vec->names.size; label_i++) {
+                    const char* label_name = labels_vec->names.data[label_i].data;
+                    if (strcmp(arg + 1, label_name) == 0) {
+                        IntVectorAdd(program_vec, labels_vec->adresses.data[label_i]);
+                    }
+                }
             }
             else if (arg[0] == 'R' && strcmp(instruction_name, "ALIAS") != 0) {
                 int reg_num = -1;
