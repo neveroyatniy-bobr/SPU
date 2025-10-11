@@ -49,7 +49,7 @@ bool ProcessorDie(Processor* processor, const char* file, size_t line);
 
 #define PROCESSOR_DO_OR_DIE(func, processor) (PROCESSOR_OK == func) || ProcessorDie(processor, __FILE__, __LINE__);
 
-ProcessorError ProcessorInit(Processor** processor);
+ProcessorError ProcessorInit(Processor** processor, const char* bytecode_file_name);
 
 ProcessorError ProcessorLoadBCFile(Processor* processor, const char* bytecode_file_name);
 

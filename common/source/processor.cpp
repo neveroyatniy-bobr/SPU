@@ -79,11 +79,11 @@ bool ProcessorDie(Processor* processor, const char* file, size_t line) {
     return 0;
 }
 
-ProcessorError ProcessorInit(Processor** processor) {
+ProcessorError ProcessorInit(Processor** processor, const char* bytecode_file_name) {
     *processor = (Processor*)calloc(1, sizeof(Processor));
 
     StackInit(&(*processor)->stack, 0);
-    ProcessorLoadBCFile(*processor, "../program/asm.vovalox");
+    ProcessorLoadBCFile(*processor, bytecode_file_name);
     for (size_t reg_i = 0; reg_i < sizeof(&(*processor)->regs) / sizeof(&(*processor)->regs[0]); reg_i++) {
         (*processor)->regs[reg_i] = 0;
     }
