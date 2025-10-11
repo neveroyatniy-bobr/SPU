@@ -6,9 +6,9 @@
 
 void Translate(const char* asm_file_name, const char* bytecode_file_name);
 
-void PredBytecodeConstructor(Text* program, IntVector* label_vec);
+void PredBytecodeConstructor(Text* program, IntVector* label_vec, char reg_names[8][32]);
 
-void ProgramVecConstructor(Text* program, IntVector* program_vec, IntVector* label_vec);
+void ProgramVecConstructor(Text* program, IntVector* program_vec, IntVector* label_vec, char reg_names[8][32]);
 
 void UploadBytecodeFile(IntVector program_vec, const char* bytecode_file_name);
 

@@ -16,12 +16,14 @@ void Translate(const char* asm_file_name, const char* bytecode_file_name) {
     IntVector label_vec = {};
     IntVectorInit(&label_vec, 0);
 
+    char reg_names[8][32] = { "RAX", "RBX", "RCX", "RDX", "REX", "RFX", "RGX", "RHX" };
+
     Text program = {};
     TextParse(&program, asm_file_name);
 
-    PredBytecodeConstructor(&program, &label_vec);
+    PredBytecodeConstructor(&program, &label_vec, reg_names);
 
-    ProgramVecConstructor(&program, &program_vec, &label_vec);
+    ProgramVecConstructor(&program, &program_vec, &label_vec, reg_names);
 
     TextMemoryFree(program);
 
@@ -32,7 +34,18 @@ void Translate(const char* asm_file_name, const char* bytecode_file_name) {
     IntVectorFree(&label_vec);
 }
 
-void PredBytecodeConstructor(Text* program, IntVector* label_vec) {
+static bool IsStrInt(const char* str) {
+    int i;
+    char c;
+
+    if (sscanf(str, "%d%1s", &i, &c) == 1) {
+        return true;
+    }
+
+    return false;
+}
+
+void PredBytecodeConstructor(Text* program, IntVector* label_vec, char reg_names[8][32]) {
     int instruction_pointer = 0;
 
     for (size_t line_i = 0; line_i < program->size; line_i++) {
@@ -105,6 +118,40 @@ void PredBytecodeConstructor(Text* program, IntVector* label_vec) {
                     label_vec->data[label_num] = instruction_pointer;
                 }
             }
+            else if (strcmp(instruction_name, "ALIAS") == 0) {
+                true_args_count = 2;
+                is_instruction = true;
+
+                if (args_count != 2) {
+                    fprintf(stderr, "Неверное количество аргументов у ALIAS\n");
+                    printf("line: %lu\n", line_i + 1);
+                    return;
+                }
+
+                instruction_pointer -= 2;
+
+                char* reg_name = strchr(line->data, '\0') + 1;
+                char* new_reg_name = strchr(reg_name, '\0') + 1;
+
+                if (strlen(new_reg_name) + 1 > 32) {
+                    fprintf(stderr, "Слишком длинное имя регистра\n");
+                    printf("line: %lu\n", line_i + 1);
+                    return;
+                }
+
+
+                for (size_t reg_i = 0; reg_i < 8; reg_i++) {
+                    if (strcmp(reg_name, reg_names[reg_i]) == 0) {
+                        strncpy(reg_names[reg_i], new_reg_name, 32);
+                    }
+                }
+
+                if (new_reg_name[0] != 'R') {
+                    fprintf(stderr, "Имя регистра обязательно должно начинаться с 'R'\n");
+                    printf("line: %lu\n", line_i + 1);
+                    return;
+                }
+            }
             else {
                 if (args_count != true_args_count) {
                     fprintf(stderr, "Неверное количество аргументов у инструкции\n");
@@ -122,7 +169,7 @@ void PredBytecodeConstructor(Text* program, IntVector* label_vec) {
     }
 }
 
-void ProgramVecConstructor(Text* program, IntVector* program_vec, IntVector* label_vec) {
+void ProgramVecConstructor(Text* program, IntVector* program_vec, IntVector* label_vec, char reg_names[8][32]) {
     for (size_t line_i = 0; line_i < program->size; line_i++) {
         Line line = program->data[line_i];
 
@@ -140,8 +187,31 @@ void ProgramVecConstructor(Text* program, IntVector* program_vec, IntVector* lab
                 size_t label_num = (size_t)atol(arg + 1);
                 IntVectorAdd(program_vec, label_vec->data[label_num]);
             }
-            else {
+            else if (arg[0] == 'R' && strcmp(instruction_name, "ALIAS") != 0) {
+                int reg_num = -1;
+
+                for (int reg_i = 0; reg_i < 8; reg_i++) {
+                    if (strcmp(arg, reg_names[reg_i]) == 0) {
+                        reg_num = reg_i;
+                    }
+                }
+
+                if (reg_num == -1) {
+                    fprintf(stderr, "Неверное имя регистра\n");
+                    printf("line: %lu\n", line_i + 1);
+                    return;
+                }
+
+                IntVectorAdd(program_vec, reg_num);
+            }
+            else if (IsStrInt(arg)) {
                 IntVectorAdd(program_vec, atoi(arg));
+            }  
+            else if (strcmp(instruction_name, "ALIAS") == 0) { }
+            else {
+                fprintf(stderr, "Неверный аргумент\n");
+                printf("line: %lu\n", line_i + 1);
+                return;
             }
             arg = strchr(arg, '\0') + 1;
         }
