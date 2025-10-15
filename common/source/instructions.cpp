@@ -209,3 +209,31 @@ DefJ(AE, >=);
 ProcessorError COM(const int* /*args*/, Processor* processor) {
     return processor->last_error_code = PROCESSOR_OK;
 }
+
+ProcessorError CALL(const int* args, Processor* processor) {
+    ProcessorCheck(processor);
+
+    StackPush(&processor->call_stack, (int)processor->instruction_ptr + 1);
+
+    size_t adress = (size_t)args[0];
+
+    processor->instruction_ptr = adress - 1;
+
+    ProcessorCheck(processor);
+
+    return processor->last_error_code = PROCESSOR_OK;
+}
+
+ProcessorError RET(const int* /*args*/, Processor* processor) {
+    ProcessorCheck(processor);
+
+    int adress = 0;
+
+    StackPop(&processor->call_stack, &adress);
+
+    processor->instruction_ptr = (size_t)adress - 1;
+
+    ProcessorCheck(processor);
+
+    return processor->last_error_code = PROCESSOR_OK;
+}

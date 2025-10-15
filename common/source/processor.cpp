@@ -83,6 +83,7 @@ ProcessorError ProcessorInit(Processor** processor, const char* bytecode_file_na
     *processor = (Processor*)calloc(1, sizeof(Processor));
 
     StackInit(&(*processor)->stack, 0);
+    StackInit(&(*processor)->call_stack, 0);
     ProcessorLoadBCFile(*processor, bytecode_file_name);
     for (size_t reg_i = 0; reg_i < sizeof(&(*processor)->regs) / sizeof(&(*processor)->regs[0]); reg_i++) {
         (*processor)->regs[reg_i] = 0;
@@ -149,6 +150,7 @@ ProcessorError ProcessorFree(Processor* processor) {
     }
 
     StackFree(&processor->stack);
+    StackFree(&processor->call_stack);
     IntVectorFree(&processor->program_vec);
     free(processor);
 

@@ -55,6 +55,10 @@ ProcessorError JAE(const int* args, Processor* processor);
 
 ProcessorError COM(const int* /*args*/, Processor* processor);
 
+ProcessorError CALL(const int* args, Processor* processor);
+
+ProcessorError RET(const int* /*args*/, Processor* processor);
+
 struct Instruction {
     const char* name;
     const size_t args_count;
@@ -81,6 +85,8 @@ static const Instruction instructions[] = {
     { .name = "JA", .args_count = 1, .func = JA }, 
     { .name = "JAE", .args_count = 1, .func = JAE },
     { .name = "COM", .args_count = 0, .func = COM },
+    { .name = "CALL", .args_count = 1, .func = CALL },
+    { .name = "RET", .args_count = 0, .func = RET }
 };
 
 static const size_t instructions_count = sizeof(instructions) / sizeof(instructions[0]);

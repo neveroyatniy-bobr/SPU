@@ -19,6 +19,7 @@ typedef void (*ProcessorHandler)(Processor* processor, const char* file, size_t 
 struct Processor
 {
     Stack stack;
+    Stack call_stack;
     int regs[8];
     IntVector program_vec;
     size_t instruction_ptr;
