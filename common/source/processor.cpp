@@ -88,6 +88,11 @@ ProcessorError ProcessorInit(Processor** processor, const char* bytecode_file_na
     for (size_t reg_i = 0; reg_i < sizeof(&(*processor)->regs) / sizeof(&(*processor)->regs[0]); reg_i++) {
         (*processor)->regs[reg_i] = 0;
     }
+
+    for (size_t mem_i = 0; mem_i < sizeof(&(*processor)->mem) / sizeof(&(*processor)->mem[0]); mem_i++) {
+        (*processor)->mem[mem_i] = 0;
+    }
+
     (*processor)->instruction_ptr = 0;
 
     (*processor)->handler = ProcessorStdHandler;

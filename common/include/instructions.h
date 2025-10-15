@@ -59,6 +59,14 @@ ProcessorError CALL(const int* args, Processor* processor);
 
 ProcessorError RET(const int* /*args*/, Processor* processor);
 
+ProcessorError PUSHM(const int* args, Processor* processor);
+
+ProcessorError POPM(const int* args, Processor* processor);
+
+ProcessorError PUSHMR(const int* args, Processor* processor);
+
+ProcessorError POPMR(const int* args, Processor* processor);
+
 struct Instruction {
     const char* name;
     const size_t args_count;
@@ -86,7 +94,11 @@ static const Instruction instructions[] = {
     { .name = "JAE", .args_count = 1, .func = JAE },
     { .name = "COM", .args_count = 0, .func = COM },
     { .name = "CALL", .args_count = 1, .func = CALL },
-    { .name = "RET", .args_count = 0, .func = RET }
+    { .name = "RET", .args_count = 0, .func = RET },
+    { .name = "PUSHM", .args_count = 1, .func = PUSHM },
+    { .name = "POPM", .args_count = 1, .func = POPM },
+    { .name = "PUSHMR", .args_count = 1, .func = PUSHMR },
+    { .name = "POPMR", .args_count = 1, .func = POPMR }
 };
 
 static const size_t instructions_count = sizeof(instructions) / sizeof(instructions[0]);

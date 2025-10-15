@@ -237,3 +237,55 @@ ProcessorError RET(const int* /*args*/, Processor* processor) {
 
     return processor->last_error_code = PROCESSOR_OK;
 }
+
+ProcessorError PUSHM(const int* args, Processor* processor) {
+    ProcessorCheck(processor);
+
+    int mem_i = args[0];
+
+    PROCESSOR_STACK_DO_OR_DIE(StackPush(&processor->stack, processor->mem[mem_i]), processor);
+
+    ProcessorCheck(processor);
+
+    return processor->last_error_code = PROCESSOR_OK;
+}
+
+ProcessorError POPM(const int* args, Processor* processor) {
+    ProcessorCheck(processor);
+
+    int mem_i = args[0];
+
+    PROCESSOR_STACK_DO_OR_DIE(StackPop(&processor->stack, &processor->mem[mem_i]), processor);
+
+    ProcessorCheck(processor);
+
+    return processor->last_error_code = PROCESSOR_OK;
+}
+
+ProcessorError PUSHMR(const int* args, Processor* processor) {
+    ProcessorCheck(processor);
+
+    int reg_i = args[0];
+
+    int mem_i = processor->regs[reg_i];
+
+    PROCESSOR_STACK_DO_OR_DIE(StackPush(&processor->stack, processor->mem[mem_i]), processor);
+
+    ProcessorCheck(processor);
+
+    return processor->last_error_code = PROCESSOR_OK;
+}
+
+ProcessorError POPMR(const int* args, Processor* processor) {
+    ProcessorCheck(processor);
+
+    int reg_i = args[0];
+
+    int mem_i = processor->regs[reg_i];
+
+    PROCESSOR_STACK_DO_OR_DIE(StackPop(&processor->stack, &processor->mem[mem_i]), processor);
+
+    ProcessorCheck(processor);
+
+    return processor->last_error_code = PROCESSOR_OK;
+}

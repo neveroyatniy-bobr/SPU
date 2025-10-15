@@ -21,6 +21,7 @@ struct Processor
     Stack stack;
     Stack call_stack;
     int regs[8];
+    int mem[1024];
     IntVector program_vec;
     size_t instruction_ptr;
     ProcessorError last_error_code;

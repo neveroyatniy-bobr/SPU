@@ -11,6 +11,7 @@ void IntVectorInit(IntVector* vector, size_t capacity) {
     vector->size = 0;
 
     vector->data = (int*)calloc(vector->capacity, sizeof(int));
+    // FIXME - NULL
 }
 
 void IntVectorRealloc(IntVector* vector) {

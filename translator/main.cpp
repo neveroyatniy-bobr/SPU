@@ -9,6 +9,6 @@ int main(int argc, char** argv) {
 
         Translate(asm_file_name, bytecode_file_name);
 
-        free(bytecode_file_name);
+        free(bytecode_file_name); // FIXME - destructor
     }
 }

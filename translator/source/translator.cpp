@@ -11,12 +11,12 @@
 #include "labels_vec.h"
 
 // FIXME Нормально разбить на функции
-// FIXME Добавить структуру Translator
 // FIXME Мб разбить на файлы
 // FIXME Добавить полную обработку ошибок для все структур с дампами
 
 void TranslatorInit(Translator** translator) {
     *translator = (Translator*)calloc(1, sizeof(Translator));
+    //FIXME - NULL
 
     IntVectorInit(&(*translator)->program_vec, 0);
 
@@ -72,7 +72,7 @@ void PredBytecodeConstructor(Translator* translator) {
     for (size_t line_i = 0; line_i < translator->program.size; line_i++) {
         Line* line = &translator->program.data[line_i];
 
-        while (line->data[0] == ' ') {
+        while (line->data[0] == ' ') { // FIXME - isspace
             line->data++;
             line->size--;
         }
@@ -81,6 +81,7 @@ void PredBytecodeConstructor(Translator* translator) {
 
         size_t new_line_size = (size_t)(end_of_line - line->data);
 
+        // FIXME - inverse condition
         if (line->size != 0) {
             if (end_of_line == NULL) {
                 fprintf(stderr, "Пропущена ;\n");
@@ -124,7 +125,8 @@ void PredBytecodeConstructor(Translator* translator) {
                 int label_adress = instruction_pointer;
                 LabelsVecAdd(&translator->labels_vec, label_name, label_adress);
             }
-            else if (strcmp(instruction_name, "ALIAS") == 0) {
+            else if (strcmp(instruction_name, "ALIAS") == 0) { // FIXME - const str
+                // FIXME - Function
                 true_args_count = 2;
                 is_instruction = true;
 
@@ -139,20 +141,20 @@ void PredBytecodeConstructor(Translator* translator) {
                 char* reg_name = strchr(line->data, '\0') + 1;
                 char* new_reg_name = strchr(reg_name, '\0') + 1;
 
-                if (strlen(new_reg_name) + 1 > 32) {
+                if (strlen(new_reg_name) + 1 > 32) { // FIXME - const
                     fprintf(stderr, "Слишком длинное имя регистра\n");
                     printf("line: %lu\n", line_i + 1);
                     return;
                 }
 
 
-                for (size_t reg_i = 0; reg_i < 8; reg_i++) {
+                for (size_t reg_i = 0; reg_i < 8; reg_i++) { // FIXME - const
                     if (strcmp(reg_name, translator->reg_names[reg_i]) == 0) {
                         strncpy(translator->reg_names[reg_i], new_reg_name, 32);
                     }
                 }
 
-                if (new_reg_name[0] != 'R') {
+                if (new_reg_name[0] != 'R') { // FIXME - const
                     fprintf(stderr, "Имя регистра обязательно должно начинаться с 'R'\n");
                     printf("line: %lu\n", line_i + 1);
                     return;
@@ -189,7 +191,7 @@ void ProgramVecConstructor(Translator* translator) {
 
         char* arg = strchr(instruction_name, '\0') + 1;
         while (arg - line.data < (ssize_t)line.size) {
-            if (arg[0] == ':') {
+            if (arg[0] == ':') { // FIXME - const
                 for (size_t label_i = 0; label_i < translator->labels_vec.names.size; label_i++) {
                     const char* label_name = translator->labels_vec.names.data[label_i].data;
                     if (strcmp(arg + 1, label_name) == 0) {
@@ -197,7 +199,7 @@ void ProgramVecConstructor(Translator* translator) {
                     }
                 }
             }
-            else if (arg[0] == 'R' && strcmp(instruction_name, "ALIAS") != 0) {
+            else if (arg[0] == 'R' && strcmp(instruction_name, "ALIAS") != 0) { // FIXME - const
                 int reg_num = -1;
 
                 for (int reg_i = 0; reg_i < 8; reg_i++) {
