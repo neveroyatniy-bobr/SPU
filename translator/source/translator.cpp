@@ -15,29 +15,44 @@
 // FIXME Мб разбить на файлы
 // FIXME Добавить полную обработку ошибок для все структур с дампами
 
+void TranslatorInit(Translator** translator) {
+    *translator = (Translator*)calloc(1, sizeof(Translator));
+
+    IntVectorInit(&(*translator)->program_vec, 0);
+
+    LabelsVecInit(&(*translator)->labels_vec);
+
+    char reg_names[REG_COUNT][REG_NAME_MAX_SIZE] = { "RAX", "RBX", "RCX", "RDX", "REX", "RFX", "RGX", "RHX" };
+
+    memcpy((*translator)->reg_names, reg_names, sizeof(reg_names));
+
+    (*translator)->program = {};
+}
+
+void TranslatorFree(Translator* translator) {
+    TextMemoryFree(translator->program);
+
+    IntVectorFree(&translator->program_vec);
+
+    LabelsVecFree(&translator->labels_vec);
+
+    free(translator);
+}
+
 void Translate(const char* asm_file_name, const char* bytecode_file_name) {
-    IntVector program_vec = {};
-    IntVectorInit(&program_vec, 0);
+    Translator* translator = NULL;
 
-    LabelsVec labels_vec = {};
-    LabelsVecInit(&labels_vec);
+    TranslatorInit(&translator);
 
-    char reg_names[8][32] = { "RAX", "RBX", "RCX", "RDX", "REX", "RFX", "RGX", "RHX" };
+    TextParse(&translator->program, asm_file_name);
 
-    Text program = {};
-    TextParse(&program, asm_file_name);
+    PredBytecodeConstructor(translator);
 
-    PredBytecodeConstructor(&program, &labels_vec, reg_names);
+    ProgramVecConstructor(translator);
 
-    ProgramVecConstructor(&program, &program_vec, &labels_vec, reg_names);
-
-    TextMemoryFree(program);
-
-    UploadBytecodeFile(program_vec, bytecode_file_name);
-
-    IntVectorFree(&program_vec);
-
-    LabelsVecFree(&labels_vec);
+    UploadBytecodeFile(translator, bytecode_file_name);
+    
+    TranslatorFree(translator);
 }
 
 static bool IsStrInt(const char* str) {
@@ -51,11 +66,11 @@ static bool IsStrInt(const char* str) {
     return false;
 }
 
-void PredBytecodeConstructor(Text* program, LabelsVec* labels_vec, char reg_names[8][32]) {
+void PredBytecodeConstructor(Translator* translator) {
     int instruction_pointer = 0;
 
-    for (size_t line_i = 0; line_i < program->size; line_i++) {
-        Line* line = &program->data[line_i];
+    for (size_t line_i = 0; line_i < translator->program.size; line_i++) {
+        Line* line = &translator->program.data[line_i];
 
         while (line->data[0] == ' ') {
             line->data++;
@@ -107,7 +122,7 @@ void PredBytecodeConstructor(Text* program, LabelsVec* labels_vec, char reg_name
 
                 Line label_name = { instruction_name + 1, strlen(instruction_name + 1) };
                 int label_adress = instruction_pointer;
-                LabelsVecAdd(labels_vec, label_name, label_adress);
+                LabelsVecAdd(&translator->labels_vec, label_name, label_adress);
             }
             else if (strcmp(instruction_name, "ALIAS") == 0) {
                 true_args_count = 2;
@@ -132,8 +147,8 @@ void PredBytecodeConstructor(Text* program, LabelsVec* labels_vec, char reg_name
 
 
                 for (size_t reg_i = 0; reg_i < 8; reg_i++) {
-                    if (strcmp(reg_name, reg_names[reg_i]) == 0) {
-                        strncpy(reg_names[reg_i], new_reg_name, 32);
+                    if (strcmp(reg_name, translator->reg_names[reg_i]) == 0) {
+                        strncpy(translator->reg_names[reg_i], new_reg_name, 32);
                     }
                 }
 
@@ -160,25 +175,25 @@ void PredBytecodeConstructor(Text* program, LabelsVec* labels_vec, char reg_name
     }
 }
 
-void ProgramVecConstructor(Text* program, IntVector* program_vec, LabelsVec* labels_vec, char reg_names[8][32]) {
-    for (size_t line_i = 0; line_i < program->size; line_i++) {
-        Line line = program->data[line_i];
+void ProgramVecConstructor(Translator* translator) {
+    for (size_t line_i = 0; line_i < translator->program.size; line_i++) {
+        Line line = translator->program.data[line_i];
 
         char* instruction_name = line.data;
 
         for (size_t instruction_i = 0; instruction_i < instructions_count; instruction_i++) {
             if (strcmp(instruction_name, instructions[instruction_i].name) == 0) {
-                IntVectorAdd(program_vec, (int)instruction_i);
+                IntVectorAdd(&translator->program_vec, (int)instruction_i);
             }
         }
 
         char* arg = strchr(instruction_name, '\0') + 1;
         while (arg - line.data < (ssize_t)line.size) {
             if (arg[0] == ':') {
-                for (size_t label_i = 0; label_i < labels_vec->names.size; label_i++) {
-                    const char* label_name = labels_vec->names.data[label_i].data;
+                for (size_t label_i = 0; label_i < translator->labels_vec.names.size; label_i++) {
+                    const char* label_name = translator->labels_vec.names.data[label_i].data;
                     if (strcmp(arg + 1, label_name) == 0) {
-                        IntVectorAdd(program_vec, labels_vec->adresses.data[label_i]);
+                        IntVectorAdd(&translator->program_vec, translator->labels_vec.adresses.data[label_i]);
                     }
                 }
             }
@@ -186,7 +201,7 @@ void ProgramVecConstructor(Text* program, IntVector* program_vec, LabelsVec* lab
                 int reg_num = -1;
 
                 for (int reg_i = 0; reg_i < 8; reg_i++) {
-                    if (strcmp(arg, reg_names[reg_i]) == 0) {
+                    if (strcmp(arg, translator->reg_names[reg_i]) == 0) {
                         reg_num = reg_i;
                     }
                 }
@@ -197,10 +212,10 @@ void ProgramVecConstructor(Text* program, IntVector* program_vec, LabelsVec* lab
                     return;
                 }
 
-                IntVectorAdd(program_vec, reg_num);
+                IntVectorAdd(&translator->program_vec, reg_num);
             }
             else if (IsStrInt(arg)) {
-                IntVectorAdd(program_vec, atoi(arg));
+                IntVectorAdd(&translator->program_vec, atoi(arg));
             }  
             else if (strcmp(instruction_name, "ALIAS") == 0) { }
             else {
@@ -213,14 +228,14 @@ void ProgramVecConstructor(Text* program, IntVector* program_vec, LabelsVec* lab
     }
 }
 
-void UploadBytecodeFile(IntVector program_vec, const char* bytecode_file_name) {
+void UploadBytecodeFile(Translator* translator, const char* bytecode_file_name) {
     FILE* bytecode_file = fopen(bytecode_file_name, "w");
     if (bytecode_file == NULL) {
         fprintf(stderr, "Не удалось создать файл. %s\n", strerror(errno));
         return;
     }
 
-    fwrite(program_vec.data, sizeof(program_vec.data[0]), program_vec.size, bytecode_file);
+    fwrite(translator->program_vec.data, sizeof(translator->program_vec.data[0]), translator->program_vec.size, bytecode_file);
 
     fclose(bytecode_file);
 }
