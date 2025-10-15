@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #include "text.h"
 #include "instructions.h"
@@ -72,7 +73,7 @@ void PredBytecodeConstructor(Translator* translator) {
     for (size_t line_i = 0; line_i < translator->program.size; line_i++) {
         Line* line = &translator->program.data[line_i];
 
-        while (line->data[0] == ' ') { // FIXME - isspace
+        while (isspace(line->data[0]) and line->data[0] != '\n') { // FIXME - isspace
             line->data++;
             line->size--;
         }
@@ -81,99 +82,100 @@ void PredBytecodeConstructor(Translator* translator) {
 
         size_t new_line_size = (size_t)(end_of_line - line->data);
 
-        // FIXME - inverse condition
-        if (line->size != 0) {
-            if (end_of_line == NULL) {
-                fprintf(stderr, "Пропущена ;\n");
-                printf("line: %lu\n", line_i + 1);
-                return;
-            }
+        if (line->size == 0) {
+            continue;
+        }
 
-            *end_of_line = '\0';
-            line->size = new_line_size;
+        if (end_of_line == NULL) {
+            fprintf(stderr, "Пропущена ;\n");
+            printf("line: %lu\n", line_i + 1);
+            return;
+        }
 
-            char* instruction_name = NULL;
-            instruction_name = strtok(line->data, " ");
-            bool is_instruction = false;
-            size_t true_args_count;
+        *end_of_line = '\0';
+        line->size = new_line_size;
 
-            for (size_t instruction_i = 0; instruction_i < instructions_count; instruction_i++) {
-                if (strcmp(instruction_name, instructions[instruction_i].name) == 0) {
-                    true_args_count = instructions[instruction_i].args_count;
-                    is_instruction = true;
-                    instruction_pointer++;
-                }
-            }
+        char* instruction_name = NULL;
+        instruction_name = strtok(line->data, " ");
+        bool is_instruction = false;
+        size_t true_args_count;
 
-            char* arg = NULL;
-            size_t args_count = 0;
-            while ((arg = strtok(NULL, " ")) != NULL) {
-                args_count++;
+        for (size_t instruction_i = 0; instruction_i < instructions_count; instruction_i++) {
+            if (strcmp(instruction_name, instructions[instruction_i].name) == 0) {
+                true_args_count = instructions[instruction_i].args_count;
+                is_instruction = true;
                 instruction_pointer++;
             }
+        }
 
-            if (instruction_name[0] == ':') {
-                is_instruction = true;
+        char* arg = NULL;
+        size_t args_count = 0;
+        while ((arg = strtok(NULL, " ")) != NULL) {
+            args_count++;
+            instruction_pointer++;
+        }
 
-                if (args_count > 0) {
-                    fprintf(stderr, "У метки не может быть аргументов\n");
-                    printf("line: %lu\n", line_i + 1);
-                    return;
-                }
-
-                Line label_name = { instruction_name + 1, strlen(instruction_name + 1) };
-                int label_adress = instruction_pointer;
-                LabelsVecAdd(&translator->labels_vec, label_name, label_adress);
-            }
-            else if (strcmp(instruction_name, "ALIAS") == 0) { // FIXME - const str
-                // FIXME - Function
-                true_args_count = 2;
-                is_instruction = true;
-
-                if (args_count != 2) {
-                    fprintf(stderr, "Неверное количество аргументов у ALIAS\n");
-                    printf("line: %lu\n", line_i + 1);
-                    return;
-                }
-
-                instruction_pointer -= 2;
-
-                char* reg_name = strchr(line->data, '\0') + 1;
-                char* new_reg_name = strchr(reg_name, '\0') + 1;
-
-                if (strlen(new_reg_name) + 1 > 32) { // FIXME - const
-                    fprintf(stderr, "Слишком длинное имя регистра\n");
-                    printf("line: %lu\n", line_i + 1);
-                    return;
-                }
-
-
-                for (size_t reg_i = 0; reg_i < 8; reg_i++) { // FIXME - const
-                    if (strcmp(reg_name, translator->reg_names[reg_i]) == 0) {
-                        strncpy(translator->reg_names[reg_i], new_reg_name, 32);
-                    }
-                }
-
-                if (new_reg_name[0] != 'R') { // FIXME - const
-                    fprintf(stderr, "Имя регистра обязательно должно начинаться с 'R'\n");
-                    printf("line: %lu\n", line_i + 1);
-                    return;
-                }
-            }
-            else {
-                if (args_count != true_args_count) {
-                    fprintf(stderr, "Неверное количество аргументов у инструкции\n");
-                    printf("line: %lu\n", line_i + 1);
-                    return;
-                }
-            }
-
-            if (!is_instruction) {
-                fprintf(stderr, "Несуществующая инструкция: %s\n", instruction_name);
+        if (instruction_name[0] == ':') {
+            if (args_count > 0) {
+                fprintf(stderr, "У метки не может быть аргументов\n");
                 printf("line: %lu\n", line_i + 1);
                 return;
             }
+
+            Line label_name = { instruction_name + 1, strlen(instruction_name + 1) };
+            int label_adress = instruction_pointer;
+            LabelsVecAdd(&translator->labels_vec, label_name, label_adress);
+
+            continue;
         }
+
+        if (strcmp(instruction_name, "ALIAS") == 0) { // FIXME - const str
+            // FIXME - Function
+            if (args_count != 2) {
+                fprintf(stderr, "Неверное количество аргументов у ALIAS\n");
+                printf("line: %lu\n", line_i + 1);
+                return;
+            }
+
+            instruction_pointer -= 2;
+
+            char* reg_name = strchr(line->data, '\0') + 1;
+            char* new_reg_name = strchr(reg_name, '\0') + 1;
+
+            if (strlen(new_reg_name) + 1 > 32) { // FIXME - const
+                fprintf(stderr, "Слишком длинное имя регистра\n");
+                printf("line: %lu\n", line_i + 1);
+                return;
+            }
+
+
+            for (size_t reg_i = 0; reg_i < 8; reg_i++) { // FIXME - const
+                if (strcmp(reg_name, translator->reg_names[reg_i]) == 0) {
+                    strncpy(translator->reg_names[reg_i], new_reg_name, 32);
+                }
+            }
+
+            if (new_reg_name[0] != 'R') { // FIXME - const
+                fprintf(stderr, "Имя регистра обязательно должно начинаться с 'R'\n");
+                printf("line: %lu\n", line_i + 1);
+                return;
+            }
+
+            continue;
+        }
+
+        if (args_count != true_args_count) {
+            fprintf(stderr, "Неверное количество аргументов у инструкции\n");
+            printf("line: %lu\n", line_i + 1);
+            return;
+        }
+
+        if (!is_instruction) {
+            fprintf(stderr, "Несуществующая инструкция: %s\n", instruction_name);
+            printf("line: %lu\n", line_i + 1);
+            return;
+        }
+    
     }
 }
 
