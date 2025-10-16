@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "processor.h"
+#include "vector.h"
 
 int main(int argc, char** argv) {
     for (int file_i = 1; file_i < argc; file_i++) {

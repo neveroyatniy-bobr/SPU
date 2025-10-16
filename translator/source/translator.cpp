@@ -73,7 +73,7 @@ void PredBytecodeConstructor(Translator* translator) {
     for (size_t line_i = 0; line_i < translator->program.size; line_i++) {
         Line* line = &translator->program.data[line_i];
 
-        while (isspace(line->data[0]) and line->data[0] != '\n') { // FIXME - isspace
+        while (isspace(line->data[0]) and line->data[0] != '\n') {
             line->data++;
             line->size--;
         }
@@ -139,10 +139,10 @@ void PredBytecodeConstructor(Translator* translator) {
 
             instruction_pointer -= 2;
 
-            char* reg_name = strchr(line->data, '\0') + 1;
-            char* new_reg_name = strchr(reg_name, '\0') + 1;
+            char* defined_name = strchr(line->data, '\0') + 1;
+            char* defined_name_value = strchr(defined_name, '\0') + 1;
 
-            if (strlen(new_reg_name) + 1 > 32) { // FIXME - const
+            if (strlen(defined_name_value) + 1 > 32) { // FIXME - const
                 fprintf(stderr, "Слишком длинное имя регистра\n");
                 printf("line: %lu\n", line_i + 1);
                 return;
@@ -150,12 +150,12 @@ void PredBytecodeConstructor(Translator* translator) {
 
 
             for (size_t reg_i = 0; reg_i < 8; reg_i++) { // FIXME - const
-                if (strcmp(reg_name, translator->reg_names[reg_i]) == 0) {
-                    strncpy(translator->reg_names[reg_i], new_reg_name, 32);
+                if (strcmp(defined_name, translator->reg_names[reg_i]) == 0) {
+                    strncpy(translator->reg_names[reg_i], defined_name_value, 32);
                 }
             }
 
-            if (new_reg_name[0] != 'R') { // FIXME - const
+            if (defined_name_value[0] != 'R') { // FIXME - const
                 fprintf(stderr, "Имя регистра обязательно должно начинаться с 'R'\n");
                 printf("line: %lu\n", line_i + 1);
                 return;
