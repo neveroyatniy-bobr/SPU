@@ -69,7 +69,7 @@ static size_t VectorHash(Vector* vector) {
     size_t hash = 0;
     hash += vector->capacity;
     hash += vector->size;
-    for (ssize_t i = -VECTOR_BIRD_SIZE * (ssize_t)vector->elem_size; i < (ssize_t)vector->size + VECTOR_BIRD_SIZE * (ssize_t)vector->elem_size; i++) {
+    for (ssize_t i = -VECTOR_BIRD_SIZE * vector->elem_size; i < vector->size + VECTOR_BIRD_SIZE * vector->elem_size; i++) {
         hash += (size_t)*(char*)VoidPtrPlus(vector->data, i);
     }
     return hash;
@@ -98,10 +98,17 @@ VectorError VectorVerefy(Vector* vector) {
     }
 
     bool bird = true;
-    for (int i = 0; i < VECTOR_BIRD_SIZE * vector->elem_size; i++) {
-        bird = memcmp(VoidPtrPlus(vector->data,  - VECTOR_BIRD_SIZE * vector->elem_size + i), &BIRD_CHAR_VALUE, 1) == 0 ? bird : false;
-        bird = memcmp(VoidPtrPlus(vector->data, vector->capacity - 2 * VECTOR_BIRD_SIZE * vector->elem_size + i), &BIRD_CHAR_VALUE, 1) == 0 ? bird : false;
+
+    for (ssize_t i = 0; i < (ssize_t)VECTOR_BIRD_SIZE * (ssize_t)vector->elem_size; i++) {
+        bird = memcmp(VoidPtrPlus(vector->data, - (ssize_t)VECTOR_BIRD_SIZE * (ssize_t)vector->elem_size + i), &BIRD_CHAR_VALUE, 1) == 0 ? bird : false;
+        bird = memcmp(VoidPtrPlus(vector->data, ((ssize_t)vector->capacity - 2 * (ssize_t)VECTOR_BIRD_SIZE) * (ssize_t)vector->elem_size + i), &BIRD_CHAR_VALUE, 1) == 0 ? bird : false;
     }
+
+    for (ssize_t i = 0; i < (ssize_t)VECTOR_BIRD_SIZE * (ssize_t)vector->elem_size; i++) {
+        memcpy(VoidPtrPlus(vector->data, - (ssize_t)VECTOR_BIRD_SIZE * (ssize_t)vector->elem_size + i), &BIRD_CHAR_VALUE, 1);
+        memcpy(VoidPtrPlus(vector->data, ((ssize_t)vector->capacity - 2 * (ssize_t)VECTOR_BIRD_SIZE) * (ssize_t)vector->elem_size + i), &BIRD_CHAR_VALUE, 1);
+    }
+
     if (!bird) {
         return vector->last_error_code = VECTOR_BIRD_ERROR;
     }
@@ -118,22 +125,27 @@ void VectorDump(Vector *vector, const char* file, size_t line) {
     VectorPrintError(vector->last_error_code);
     fprintf(stderr, reset);
 
-    fprintf(stderr, BYEL "===========[VECTOR DUMP]==========\n" reset);
+    fprintf(stderr, BYEL "==========[VECTOR DUMP]==========\n" reset);
     fprintf(stderr, BYEL "|" GRN " idx " BYEL "|" GRN " value  " BYEL "|" GRN " address        " BYEL "|\n" reset);
     fprintf(stderr, BYEL "|-------------------------------|\n" reset);
     if (vector->size > 0) {
-        fprintf(stderr, BYEL "|" MAG " %3lu " BYEL "|" MAG " %5ld  " BYEL "|" MAG " %p " BYEL "|" GRN " <-- end\n" reset, vector->size - 1, *(long int*)VoidPtrPlus(vector->data, vector->size - 1), VoidPtrPlus(vector->data, vector->size - 1));
+        fprintf(stderr, BYEL "|" MAG " %3ld " BYEL "|" MAG " %5ld  " BYEL "|" MAG " %p " BYEL "|" GRN " <-- end\n" reset, (ssize_t)vector->size - 1, *(long int*)VoidPtrPlus(vector->data, (ssize_t)vector->size - 1), VoidPtrPlus(vector->data, (ssize_t)vector->size - 1));
     }
     for (ssize_t i = (ssize_t)vector->size - 2; i >= 0; --i) {
         fprintf(stderr, BYEL "|" MAG " %3ld " BYEL "|" MAG " %5ld  " BYEL "|" MAG " %p " BYEL "|\n" reset, i, *(long int*)VoidPtrPlus(vector->data, i), VoidPtrPlus(vector->data, i));
     }
     fprintf(stderr, BYEL "=================================\n" reset);
     fprintf(stderr, GRN "size " BYEL "=" MAG " %lu" BYEL "," GRN " elem_size " BYEL "=" MAG " %lu" BYEL "," GRN " capacity " BYEL "=" MAG " %lu" "\n" reset, vector->size, vector->elem_size, vector->capacity);
-    fprintf(stderr, BYEL "---------------------------------\n" reset);
+    fprintf(stderr, BYEL "---------------------------------\n");
+    for (ssize_t i = -(ssize_t)VECTOR_BIRD_SIZE * (ssize_t)vector->elem_size; i < ((ssize_t)vector->capacity - (ssize_t)VECTOR_BIRD_SIZE) * (ssize_t)vector->elem_size; i++) {
+        fprintf(stderr, "data[%ld] = %u\n", i, (int)*(unsigned char*)VoidPtrPlus(vector->data, i));
+    }
+    fprintf(stderr, reset);
 }
 
 void VectorStdHandler(Vector* vector, const char* file, size_t line) {
     VectorDump(vector, file, line);
+    abort();
 }
 
 VectorError VectorSetHandler(Vector* vector, VectorHandler handler) {
@@ -156,24 +168,24 @@ bool VectorDie(Vector* vector, const char* file, size_t line) {
     return 0;
 }
 
-VectorError VectorInit(Vector** vector, size_t elem_capacity, size_t elem_size) {
+VectorError VectorInit(Vector** vector, size_t capacity, size_t elem_size) {
     *vector = (Vector*)calloc(1, sizeof(Vector));
 
-    (*vector)->capacity = max(VECTOR_MIN_CAPACITY, elem_capacity) + 2 * VECTOR_BIRD_SIZE * (*vector)->elem_size;
+    (*vector)->capacity = max(VECTOR_MIN_CAPACITY, capacity) + 2 * VECTOR_BIRD_SIZE;
 
     (*vector)->size = 0;
 
     (*vector)->elem_size = elem_size;
 
-    void* data = VoidPtrPlus(calloc((*vector)->capacity, (*vector)->elem_size), VECTOR_BIRD_SIZE * (*vector)->elem_size);
+    void* data = VoidPtrPlus(calloc((*vector)->capacity, (*vector)->elem_size), (ssize_t)VECTOR_BIRD_SIZE * (ssize_t)(*vector)->elem_size);
     if (data == NULL) {
         return (*vector)->last_error_code = VECTOR_INIT_ERR;
     }
     (*vector)->data = data;
 
-    for (ssize_t i = 0; i < VECTOR_BIRD_SIZE * (*vector)->elem_size; i++) {
-        memcpy(VoidPtrPlus((*vector)->data, - VECTOR_BIRD_SIZE * (*vector)->elem_size + i), &BIRD_CHAR_VALUE, 1);
-        memcpy(VoidPtrPlus((*vector)->data, (ssize_t)(*vector)->capacity - 2 * VECTOR_BIRD_SIZE * (*vector)->elem_size + i), &BIRD_CHAR_VALUE, 1);
+    for (ssize_t i = 0; i < (ssize_t)VECTOR_BIRD_SIZE * (ssize_t)(*vector)->elem_size; i++) {
+        memcpy(VoidPtrPlus((*vector)->data, - (ssize_t)VECTOR_BIRD_SIZE * (ssize_t)(*vector)->elem_size + i), &BIRD_CHAR_VALUE, 1);
+        memcpy(VoidPtrPlus((*vector)->data, ((ssize_t)(*vector)->capacity - 2 * (ssize_t)VECTOR_BIRD_SIZE) * (ssize_t)(*vector)->elem_size + i), &BIRD_CHAR_VALUE, 1);
     }
 
     (*vector)->hash = VectorHash(*vector);
@@ -194,20 +206,20 @@ VectorError VectorExpantion(Vector* vector) {
         return vector->last_error_code = VECTOR_NULL_PTR;
     }
 
-    void* data = realloc(vector->data, vector->capacity * VECTOR_GROW_FACTOR * vector->elem_size);
+    void* data = VoidPtrPlus(realloc(VoidPtrPlus(vector->data, - (ssize_t)VECTOR_BIRD_SIZE * (ssize_t)vector->elem_size), vector->capacity * VECTOR_GROW_FACTOR * vector->elem_size), (ssize_t)VECTOR_BIRD_SIZE * (ssize_t)vector->elem_size);
     if (data == NULL) {
         return vector->last_error_code = VECTOR_EXPANTION_ERR;
     }
     vector->data = data;
 
-    for (ssize_t i = 0; i < VECTOR_BIRD_SIZE * vector->elem_size; i++) {
-        memcpy(VoidPtrPlus(vector->data, (ssize_t)vector->capacity - 2 * VECTOR_BIRD_SIZE * vector->elem_size + i), &NULL_VALUE, 1);
+    for (ssize_t i = 0; i < (ssize_t)VECTOR_BIRD_SIZE * (ssize_t)vector->elem_size; i++) {
+        memcpy(VoidPtrPlus(vector->data, ((ssize_t)vector->capacity - 2 * (ssize_t)VECTOR_BIRD_SIZE) * (ssize_t)vector->elem_size + i), &NULL_VALUE, 1);
     }
 
-    vector->capacity *= VECTOR_GROW_FACTOR;
+    vector->capacity = (vector->capacity - 2 * VECTOR_BIRD_SIZE) * VECTOR_GROW_FACTOR + 2 * VECTOR_BIRD_SIZE;
 
-    for (ssize_t i = 0; i < VECTOR_BIRD_SIZE * vector->elem_size; i++) {
-        memcpy(VoidPtrPlus(vector->data, (ssize_t)vector->capacity - 2 * VECTOR_BIRD_SIZE * vector->elem_size + i), &BIRD_CHAR_VALUE, 1);
+    for (ssize_t i = 0; i < (ssize_t)VECTOR_BIRD_SIZE * (ssize_t)vector->elem_size; i++) {
+        memcpy(VoidPtrPlus(vector->data, ((ssize_t)vector->capacity - 2 * (ssize_t)VECTOR_BIRD_SIZE) * (ssize_t)vector->elem_size + i), &BIRD_CHAR_VALUE, 1);
     }
 
     vector->hash = VectorHash(vector);
@@ -224,20 +236,20 @@ VectorError VectorContraction(Vector* vector) {
         return vector->last_error_code = VECTOR_NULL_PTR;
     }
 
-    void* data = realloc(vector->data, vector->capacity / VECTOR_GROW_FACTOR * vector->elem_size);
+    void* data = VoidPtrPlus(realloc(VoidPtrPlus(vector->data, - (ssize_t)VECTOR_BIRD_SIZE * (ssize_t)vector->elem_size), vector->capacity / VECTOR_GROW_FACTOR * vector->elem_size), (ssize_t)VECTOR_BIRD_SIZE * (ssize_t)vector->elem_size);
     if (data == NULL) {
         return vector->last_error_code = VECTOR_CONTRACTION_ERR;
     }
     vector->data = data;
 
-    for (ssize_t i = 0; i < VECTOR_BIRD_SIZE * vector->elem_size; i++) {
-        memcpy(VoidPtrPlus(vector->data, (ssize_t)vector->capacity - 2 * VECTOR_BIRD_SIZE * vector->elem_size + i), &NULL_VALUE, 1);
+    for (ssize_t i = 0; i < (ssize_t)VECTOR_BIRD_SIZE * (ssize_t)vector->elem_size; i++) {
+        memcpy(VoidPtrPlus(vector->data, ((ssize_t)vector->capacity - 2 * (ssize_t)VECTOR_BIRD_SIZE) * (ssize_t)vector->elem_size + i), &NULL_VALUE, 1);
     }
 
     vector->capacity /= VECTOR_GROW_FACTOR;
 
-    for (ssize_t i = 0; i < VECTOR_BIRD_SIZE * vector->elem_size; i++) {
-        memcpy(VoidPtrPlus(vector->data, (ssize_t)vector->capacity - 2 * VECTOR_BIRD_SIZE * vector->elem_size + i), &BIRD_CHAR_VALUE, 1);
+    for (ssize_t i = 0; i < (ssize_t)VECTOR_BIRD_SIZE * (ssize_t)vector->elem_size; i++) {
+        memcpy(VoidPtrPlus(vector->data, ((ssize_t)vector->capacity - 2 * (ssize_t)VECTOR_BIRD_SIZE) * (ssize_t)vector->elem_size + i), &BIRD_CHAR_VALUE, 1);
     }
 
     vector->hash = VectorHash(vector);
@@ -254,7 +266,7 @@ VectorError VectorFree(Vector* vector) {
         return vector->last_error_code = VECTOR_NULL_PTR;
     }
 
-    free(VoidPtrPlus(vector->data, - VECTOR_BIRD_SIZE * vector->elem_size));
+    free(VoidPtrPlus(vector->data, - (ssize_t)VECTOR_BIRD_SIZE * (ssize_t)vector->elem_size));
 
     vector->capacity = 0;
     vector->size = 0;
@@ -272,11 +284,11 @@ VectorError VectorPush(Vector* vector, void* elem) {
         return vector->last_error_code = VECTOR_NULL_PTR;
     }
 
-    if (vector->size == (vector->capacity - 2 * VECTOR_BIRD_SIZE) / VECTOR_GROW_FACTOR) {
+    if (vector->size == vector->capacity - 2 * VECTOR_BIRD_SIZE) {
         VectorExpantion(vector);
     }
 
-    memcpy(VoidPtrPlus(vector->data, vector->size),  elem, vector->elem_size);
+    memcpy(VoidPtrPlus(vector->data, (ssize_t)vector->size * (ssize_t)vector->elem_size),  elem, vector->elem_size);
     vector->size++;
 
     vector->hash = VectorHash(vector);
@@ -297,15 +309,51 @@ VectorError VectorPop(Vector* vector, void* poped_elem) {
         return vector->last_error_code = POP_ON_EMPTY_VECTOR;
     }
 
-    memcpy(poped_elem, VoidPtrPlus(vector->data, vector->size - 1), vector->elem_size);
+    memcpy(poped_elem, VoidPtrPlus(vector->data, ((ssize_t)vector->size - 1) * (ssize_t)vector->elem_size), vector->elem_size);
 
-    memcpy(VoidPtrPlus(vector->data, vector->size - 1), &NULL_VALUE, vector->elem_size);
+    memcpy(VoidPtrPlus(vector->data, (ssize_t)vector->size - 1), &NULL_VALUE, vector->elem_size);
 
     vector->size--;
 
     if (vector->size == (vector->capacity - 2 * VECTOR_BIRD_SIZE) / VECTOR_GROW_FACTOR - 1) {
         VectorContraction(vector);
     }
+
+    vector->hash = VectorHash(vector);
+
+    VectorCheck(vector);
+
+    return vector->last_error_code = VECTOR_OK;
+}
+
+VectorError VectorGet(Vector* vector, size_t i, void* dest){
+    assert(dest);
+
+    VectorCheck(vector);
+
+    if (vector->size == 0) {
+        return vector->last_error_code = POP_ON_EMPTY_VECTOR;
+    }
+
+    memcpy(dest, VoidPtrPlus(vector->data, (ssize_t)i * (ssize_t)vector->elem_size), vector->elem_size);
+
+    vector->hash = VectorHash(vector);
+
+    VectorCheck(vector);
+
+    return vector->last_error_code = VECTOR_OK;
+}
+
+VectorError VectorSet(Vector* vector, size_t i, void* src) {
+    assert(src);
+
+    VectorCheck(vector);
+
+    if (vector->size == 0) {
+        return vector->last_error_code = POP_ON_EMPTY_VECTOR;
+    }
+
+    memcpy(VoidPtrPlus(vector->data, (ssize_t)i * (ssize_t)vector->elem_size), src, vector->elem_size);
 
     vector->hash = VectorHash(vector);
 

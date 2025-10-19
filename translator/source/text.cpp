@@ -9,7 +9,11 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "my_vector.h"
+#include "vector.h"
+
+inline static void* VoidPtrPlus(void* ptr, const ssize_t n);
+
+static size_t FileSize(int file);
 
 static size_t FileSize(int file) {
     struct stat stats = {};
@@ -21,6 +25,10 @@ static size_t FileSize(int file) {
 
     return (size_t)stats.st_size;
 }
+
+inline static void* VoidPtrPlus(void* ptr, const ssize_t n) {
+    return (void*)((ssize_t)ptr + n);
+};
 
 void TextParse(Text* text, const char* input_file_name) {
     assert(text != NULL);
@@ -38,13 +46,19 @@ void TextParse(Text* text, const char* input_file_name) {
     text->buffer_start_ptr = text_buffer;
     
     ssize_t true_file_size = read(input_file, text_buffer, file_size);
+
+    if (true_file_size == -1) {
+        fprintf(stderr, "Не удалось прочитать содержимое файла: %s. %s\n", input_file_name, strerror(errno));
+        return;
+    }
+
     text_buffer[true_file_size] = '\n';
     text_buffer[true_file_size + 1] = '\0';
     
     close(input_file);
         
-    MyVector text_vec = {};
-    MyVectorInit(&text_vec, 16);
+    Vector* text_vec = NULL;
+    VECTOR_DO_OR_DIE(VectorInit(&text_vec, 16, sizeof(Line)), text_vec);
     
     char* current_line_ptr = text_buffer;
     char* next_line_ptr = text_buffer;
@@ -57,13 +71,14 @@ void TextParse(Text* text, const char* input_file_name) {
 
         Line current_line = { .data = current_line_ptr, .size = (size_t)(next_line_ptr - current_line_ptr - 1) };
         
-        MyVectorAdd(&text_vec, current_line);
+        VECTOR_DO_OR_DIE(VectorPush(text_vec, &current_line), text_vec);
     }
 
-    text->data = text_vec.data;
+    text->data = (Line*)text_vec->data;
 
-    text->size = text_vec.size;
+    text->size = (size_t)text_vec->size;
 
+    free(text_vec);
 }
 
 void TextMemoryFree(Text text) {
@@ -72,5 +87,5 @@ void TextMemoryFree(Text text) {
 
     free(text.buffer_start_ptr);
 
-    free(text.data);
+    free(VoidPtrPlus(text.data, -(ssize_t)VECTOR_BIRD_SIZE * (ssize_t)sizeof(Line)));
 }

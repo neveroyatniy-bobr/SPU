@@ -2,7 +2,7 @@
 #define PROCESSOR_H_
 
 #include "stack.h"
-#include "int_vector.h"
+#include "vector.h"
 
 struct Processor;
 
@@ -22,7 +22,7 @@ struct Processor
     Stack call_stack;
     int regs[8];
     int mem[1024];
-    IntVector program_vec;
+    Vector* program_vec;
     size_t instruction_ptr;
     ProcessorError last_error_code;
     ProcessorHandler handler;
@@ -53,7 +53,7 @@ bool ProcessorDie(Processor* processor, const char* file, size_t line);
 
 ProcessorError ProcessorInit(Processor** processor, const char* bytecode_file_name);
 
-ProcessorError ProcessorLoadBCFile(Processor* processor, const char* bytecode_file_name);
+ProcessorError ProcessorLoadBytecodeFile(Processor* processor, const char* bytecode_file_name);
 
 ProcessorError Process(Processor* processor);
 

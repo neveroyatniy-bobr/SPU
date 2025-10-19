@@ -22,8 +22,6 @@ enum VectorError {
 /// @param error Код ошибки
 void VectorPrintError(VectorError error);
 
-typedef int vector_elem_t;
-
 struct Vector;
 
 typedef void (*VectorHandler)(Vector* vector, const char* file, size_t line);
@@ -46,9 +44,9 @@ static const size_t VECTOR_GROW_FACTOR = 2;
 
 /// @brief Толщина канареешной защиты
 #ifndef NOBIRD
-static const ssize_t VECTOR_BIRD_SIZE = 1;
+static const size_t VECTOR_BIRD_SIZE = 1;
 #else
-static const ssize_t VECTOR_BIRD_SIZE = 0;
+static const size_t VECTOR_BIRD_SIZE = 0;
 #endif
 
 /// @brief Значение канарейки
@@ -91,11 +89,24 @@ VectorError VectorPush(Vector* vector, void* elem);
 /// @return Код ошибки
 VectorError VectorPop(Vector* vector, void* poped_elem);
 
-/// @brief Проверяет вектор на ошибки
+/// @brief Получает значение iго элемента вектора и записывает его в dest
+/// @param vector Вектор
+/// @param i i
+/// @param dest Указатель на переменную в которую записывается полученное значение
+/// @return Код ошибки
+VectorError VectorGet(Vector* vector, size_t i, void* dest);
+
+/// @brief Записывает значение src в iй элемент вектора
+/// @param vector Вектор
+/// @param i i
+/// @param src Указатель на переменную, значение которой будет записано 
+/// @return Код ошибки
+VectorError VectorSet(Vector* vector, size_t i, void* src);
+
+/// @brief Проверяет вектор на ошибки, 
 /// @param vector  Вектор
 /// @return Код ошибки
 VectorError VectorVerefy(Vector* vector);
-
 
 /// @brief Выводит информацию о поломке вектора
 /// @param vector Вектор

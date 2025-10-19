@@ -4,15 +4,14 @@
 #include <stdlib.h>
 
 #include "text.h"
-#include "int_vector.h"
-#include "my_vector.h"
+#include "vector.h"
 #include "labels_vec.h"
 
 static const size_t REG_COUNT = 8;
 static const size_t REG_NAME_MAX_SIZE = 32;
 
 struct Translator {
-    IntVector program_vec;
+    Vector* program_vec;
     LabelsVec labels_vec;
     char reg_names[REG_COUNT][REG_NAME_MAX_SIZE];
     Text program;

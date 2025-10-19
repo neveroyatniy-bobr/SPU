@@ -9,8 +9,8 @@
 
 #include "instructions.h"
 #include "stack.h"
-#include "int_vector.h"
 #include "color.h"
+#include "vector.h"
 
 void ProcessorPrintError(ProcessorError error_code) {
     switch (error_code)
@@ -84,7 +84,7 @@ ProcessorError ProcessorInit(Processor** processor, const char* bytecode_file_na
 
     StackInit(&(*processor)->stack, 0);
     StackInit(&(*processor)->call_stack, 0);
-    ProcessorLoadBCFile(*processor, bytecode_file_name);
+    ProcessorLoadBytecodeFile(*processor, bytecode_file_name);
     for (size_t reg_i = 0; reg_i < sizeof(&(*processor)->regs) / sizeof(&(*processor)->regs[0]); reg_i++) {
         (*processor)->regs[reg_i] = 0;
     }
@@ -115,16 +115,16 @@ static size_t FileSize(int file) {
     return (size_t)stats.st_size;
 }
 
-ProcessorError ProcessorLoadBCFile(Processor* processor, const char* bytecode_file_name) {
+ProcessorError ProcessorLoadBytecodeFile(Processor* processor, const char* bytecode_file_name) {
     int bytecode_file = open(bytecode_file_name, O_RDONLY);
 
     size_t file_size = FileSize(bytecode_file);
 
-    IntVectorInit(&processor->program_vec, file_size);
+    VectorInit(&processor->program_vec, file_size, sizeof(int));
 
-    read(bytecode_file, processor->program_vec.data, file_size);
+    read(bytecode_file, processor->program_vec->data, file_size);
 
-    processor->program_vec.size = file_size / sizeof(processor->program_vec.data[0]);
+    processor->program_vec->size = file_size / processor->program_vec->elem_size;
 
     close(bytecode_file);
 
@@ -132,12 +132,14 @@ ProcessorError ProcessorLoadBCFile(Processor* processor, const char* bytecode_fi
 }
 
 ProcessorError Process(Processor* processor) {
-    for (; processor->instruction_ptr < processor->program_vec.size; processor->instruction_ptr++) {
-        Instruction instruction = instructions[processor->program_vec.data[processor->instruction_ptr]];
+    for (; processor->instruction_ptr < processor->program_vec->size; processor->instruction_ptr++) {
+        int instruction_i = 0;
+        VectorGet(processor->program_vec, processor->instruction_ptr, &instruction_i);
+        Instruction instruction = instructions[instruction_i];
 
         int* args = (int*)calloc(sizeof(instruction.args_count), sizeof(int));
         for (size_t i = 0; i < instruction.args_count; i++) {
-            args[i] = processor->program_vec.data[++processor->instruction_ptr];
+            VectorGet(processor->program_vec, ++processor->instruction_ptr, &args[i]);
         }
 
         PROCESSOR_DO_OR_DIE(instruction.func(args, processor), processor);
@@ -156,7 +158,7 @@ ProcessorError ProcessorFree(Processor* processor) {
 
     StackFree(&processor->stack);
     StackFree(&processor->call_stack);
-    IntVectorFree(&processor->program_vec);
+    VectorFree(processor->program_vec);
     free(processor);
 
     return PROCESSOR_OK;
