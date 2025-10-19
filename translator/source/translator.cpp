@@ -20,19 +20,25 @@ static bool IsStrInt(const char* str);
 
 void TranslatorInit(Translator** translator) {
     assert(translator);
-    //FIXME Translator* loc_tr =
-    *translator = (Translator*)calloc(1, sizeof(Translator));
-    //FIXME - NULL
+    
+    Translator* loc_translator = (Translator*)calloc(1, sizeof(Translator));
+    
+    if (loc_translator == NULL) {
+        fprintf(stderr, "Не удалось выделить память на транслятор\n");
+        abort();
+    }
 
-    VectorInit(&(*translator)->program_vec, 0, sizeof(int));
+    VectorInit(&loc_translator->program_vec, 0, sizeof(int));
 
-    VectorInit(&(*translator)->labels_vec, 0, sizeof(Label));
+    VectorInit(&loc_translator->labels_vec, 0, sizeof(Label));
 
     char reg_names[REG_COUNT][REG_NAME_MAX_SIZE] = { "RAX", "RBX", "RCX", "RDX", "REX", "RFX", "RGX", "RHX" };
 
-    memcpy((*translator)->reg_names, reg_names, sizeof(reg_names));
+    memcpy(loc_translator->reg_names, reg_names, sizeof(reg_names));
 
-    (*translator)->program = {};
+    loc_translator->program = {};
+
+    *translator = loc_translator;
 }
 
 void TranslatorFree(Translator* translator) {
