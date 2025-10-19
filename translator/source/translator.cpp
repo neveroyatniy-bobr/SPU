@@ -10,7 +10,7 @@
 #include "text.h"
 #include "instructions.h"
 #include "vector.h"
-#include "labels_vec.h"
+#include "labels.h"
 
 // FIXME Нормально разбить на функции
 // FIXME Мб разбить на файлы
@@ -26,7 +26,7 @@ void TranslatorInit(Translator** translator) {
 
     VectorInit(&(*translator)->program_vec, 0, sizeof(int));
 
-    LabelsVecInit(&(*translator)->labels_vec);
+    VectorInit(&(*translator)->labels_vec, 0, sizeof(Label));
 
     char reg_names[REG_COUNT][REG_NAME_MAX_SIZE] = { "RAX", "RBX", "RCX", "RDX", "REX", "RFX", "RGX", "RHX" };
 
@@ -42,7 +42,7 @@ void TranslatorFree(Translator* translator) {
 
     VectorFree(translator->program_vec);
 
-    LabelsVecFree(&translator->labels_vec);
+    VectorFree(translator->labels_vec);
 
     free(translator);
 }
@@ -125,16 +125,19 @@ void PredBytecodeConstructor(Translator* translator) {
             instruction_pointer++;
         }
 
-        if (instruction_name[0] == ':') {
+        if (instruction_name[0] == LABEL_MARK) {
             if (args_count > 0) {
                 fprintf(stderr, "У метки не может быть аргументов\n");
                 printf("line: %lu\n", line_i + 1);
                 return;
             }
 
-            Line label_name = { instruction_name + 1, strlen(instruction_name + 1) };
+            const char* label_name = instruction_name + 1;
             int label_adress = instruction_pointer;
-            LabelsVecAdd(&translator->labels_vec, label_name, label_adress);
+
+            Label label = { .name = label_name, .adresses = label_adress };
+
+            VectorPush(translator->labels_vec, &label);
 
             continue;
         }
@@ -206,14 +209,8 @@ void ProgramVecConstructor(Translator* translator) {
 
         char* arg = strchr(instruction_name, '\0') + 1;
         while (arg - line.data < (ssize_t)line.size) {
-            // FIXME работа с label
-            if (arg[0] == ':') { // FIXME - const
-                for (size_t label_i = 0; label_i < translator->labels_vec.names.size; label_i++) {
-                    const char* label_name = translator->labels_vec.names.data[label_i].data;
-                    if (strcmp(arg + 1, label_name) == 0) {
-                        VectorPush(translator->program_vec, &translator->labels_vec.adresses.data[label_i]);
-                    }
-                }
+            if (arg[0] == LABEL_MARK) {
+                LabelsArgs(translator, arg);
             }
             else if (arg[0] == 'R' && strcmp(instruction_name, "ALIAS") != 0) { // FIXME - const
                 int reg_num = -1;
@@ -272,4 +269,17 @@ char* BytecodeFileName(char* asm_file_name) {
     strcpy(bytecode_file_name + asm_file_name_len, ".vovalox");
 
     return bytecode_file_name;
+}
+
+void LabelsArgs(Translator* translator, const char* arg) {
+    for (size_t label_i = 0; label_i < translator->labels_vec->size; label_i++) {
+        Label label = {};
+        VectorGet(translator->labels_vec, label_i, &label);
+
+        const char* label_name = label.name;
+        
+        if (strcmp(arg + 1, label_name) == 0) {
+            VectorPush(translator->program_vec, &label.adresses);
+        }
+    }
 }
