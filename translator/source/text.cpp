@@ -30,9 +30,32 @@ inline static void* VoidPtrPlus(void* ptr, const ssize_t n) {
     return (void*)((ssize_t)ptr + n);
 };
 
-void TextParse(Text* text, const char* input_file_name) {
+
+void TextPrintError(TextError error) {
+    switch (error) {
+    case TEXT_OK:
+        fprintf(stderr, "Выполнено без ошибок\n");
+        break;
+    case TEXT_DATA_NULL_PTR:
+        fprintf(stderr, "Нулевой указатель на данные текста\n");
+        break;
+    case TEXT_BUFFER_NULL_PTR:
+        fprintf(stderr, "Нулевой указатель на буффер текста\n");
+        break;
+    case TEXT_HANDLER_NULL_PTR:
+        fprintf(stderr, "Нулевой указатель на хэндлер текста\n");
+        break;
+    default:
+        fprintf(stderr, "Непредвиденная ошибка\n");
+        break;
+    }
+}
+
+TextError TextParse(Text* text, const char* input_file_name) {
     assert(text != NULL);
     assert(input_file_name != NULL);
+
+    TextCheck(text);
 
     int input_file = open(input_file_name, O_RDONLY);
 
@@ -43,7 +66,7 @@ void TextParse(Text* text, const char* input_file_name) {
     
     size_t file_size = FileSize(input_file);
     char* text_buffer = (char*)calloc(file_size + 2, sizeof(char));
-    text->buffer_start_ptr = text_buffer;
+    text->buffer = text_buffer;
     
     ssize_t true_file_size = read(input_file, text_buffer, file_size);
 
@@ -79,13 +102,77 @@ void TextParse(Text* text, const char* input_file_name) {
     text->size = (size_t)text_vec->size;
 
     free(text_vec);
+
+    TextCheck(text);
 }
 
-void TextMemoryFree(Text text) {
-    assert(text.data != NULL);
-    assert(text.size != 0);
+TextError TextMemoryFree(Text text) {
+    TextCheck((&text));
 
-    free(text.buffer_start_ptr);
+    free(text.buffer);
 
     free(VoidPtrPlus(text.data, -(ssize_t)VECTOR_BIRD_SIZE * (ssize_t)sizeof(Line)));
 }
+
+TextError TextVerefy(Text* text) {
+    assert(text);
+
+    if (text->last_error_code != TEXT_OK) {
+        return text->last_error_code;
+    }
+
+    if (text->data == NULL) {
+        return text->last_error_code = TEXT_DATA_NULL_PTR;
+    }
+
+    if (text->buffer == NULL) {
+        return text->last_error_code = TEXT_BUFFER_NULL_PTR;
+    }
+
+    if (text->handler == NULL) {
+        return text->last_error_code = TEXT_HANDLER_NULL_PTR;
+    }
+
+    return text->last_error_code = TEXT_OK;
+}
+
+void TextDump(Text* text, const char* file, size_t line) {
+    fprintf(stderr, "=========TEXT=DUMP========\n");
+
+    fprintf(stderr, "ERROR in %s:%d\n", file, line);
+
+    TextPrintError(text->last_error_code);
+
+    for (size_t line_i = 0; line_i < text->size; line_i++) {
+        Line line = text->data[line_i];
+        fprintf(stderr, "data[%lu].size = %lu, data[%lu].data = \"%s\"\n", line_i, line.size, line_i, line.data);
+    }
+
+    fprintf(stderr, "size = %lu\n", text->size);
+
+    fprintf(stderr, "buffer = %p\n", text->buffer);
+
+    fprintf(stderr, "==========================");
+}
+
+void TextStdHandler(Text* text, const char* file, size_t line) {
+    TextDump(text, file, line);
+    abort();
+}
+
+TextError TextSetHandler(Text* text, TextHandler handler) {
+    if (text->handler == NULL) {
+        return text->last_error_code = TEXT_HANDLER_NULL_PTR;
+    }
+
+    text->handler = handler;
+
+    return text->last_error_code = TEXT_OK;
+}
+
+TextError TextSetStdHandler(Text* text) {
+    text->handler = TextStdHandler;
+    return text->last_error_code = TEXT_OK;
+}
+
+bool TextDie(Text* text, const char* file, size_t line);
