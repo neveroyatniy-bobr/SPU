@@ -51,17 +51,31 @@ void TextPrintError(TextError error) {
     }
 }
 
+TextError TextInit(Text* text) {
+    assert(text != NULL);
+
+    text->buffer = NULL;
+
+    text->data = NULL;
+
+    text->handler = TextStdHandler;
+
+    text->last_error_code = TEXT_OK;
+
+    text->size = 0;
+
+    return text->last_error_code = TEXT_OK;
+}
+
 TextError TextParse(Text* text, const char* input_file_name) {
     assert(text != NULL);
     assert(input_file_name != NULL);
-
-    TextCheck(text);
 
     int input_file = open(input_file_name, O_RDONLY);
 
     if (input_file == -1) {
         fprintf(stderr, "Не удалось открыть файл: %s. %s\n", input_file_name, strerror(errno));
-        return;
+        return TEXT_OK;
     }
     
     size_t file_size = FileSize(input_file);
@@ -72,7 +86,7 @@ TextError TextParse(Text* text, const char* input_file_name) {
 
     if (true_file_size == -1) {
         fprintf(stderr, "Не удалось прочитать содержимое файла: %s. %s\n", input_file_name, strerror(errno));
-        return;
+        return TEXT_OK;
     }
 
     text_buffer[true_file_size] = '\n';
@@ -104,14 +118,20 @@ TextError TextParse(Text* text, const char* input_file_name) {
     free(text_vec);
 
     TextCheck(text);
+
+    return text->last_error_code = TEXT_OK;
 }
 
-TextError TextMemoryFree(Text text) {
-    TextCheck((&text));
+TextError TextMemoryFree(Text* text) {
+    TextCheck(text);
 
-    free(text.buffer);
+    free(text->buffer);
 
-    free(VoidPtrPlus(text.data, -(ssize_t)VECTOR_BIRD_SIZE * (ssize_t)sizeof(Line)));
+    free(VoidPtrPlus(text->data, -(ssize_t)VECTOR_BIRD_SIZE * (ssize_t)sizeof(Line)));
+
+    TextCheck(text);
+
+    return text->last_error_code = TEXT_OK;
 }
 
 TextError TextVerefy(Text* text) {
@@ -139,13 +159,13 @@ TextError TextVerefy(Text* text) {
 void TextDump(Text* text, const char* file, size_t line) {
     fprintf(stderr, "=========TEXT=DUMP========\n");
 
-    fprintf(stderr, "ERROR in %s:%d\n", file, line);
+    fprintf(stderr, "ERROR in %s:%lu\n", file, line);
 
     TextPrintError(text->last_error_code);
 
     for (size_t line_i = 0; line_i < text->size; line_i++) {
-        Line line = text->data[line_i];
-        fprintf(stderr, "data[%lu].size = %lu, data[%lu].data = \"%s\"\n", line_i, line.size, line_i, line.data);
+        Line current_line = text->data[line_i];
+        fprintf(stderr, "data[%lu].size = %lu, data[%lu].data = \"%s\"\n", line_i, current_line.size, line_i, current_line.data);
     }
 
     fprintf(stderr, "size = %lu\n", text->size);
@@ -175,4 +195,7 @@ TextError TextSetStdHandler(Text* text) {
     return text->last_error_code = TEXT_OK;
 }
 
-bool TextDie(Text* text, const char* file, size_t line);
+bool TextDie(Text* text, const char* file, size_t line) {
+    text->handler(text, file, line);
+    return 0;
+}

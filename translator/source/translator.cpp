@@ -11,6 +11,7 @@
 #include "instructions.h"
 #include "vector.h"
 #include "labels.h"
+#include "define.h"
 
 // FIXME Нормально разбить на функции
 // FIXME Мб разбить на файлы
@@ -32,11 +33,13 @@ void TranslatorInit(Translator** translator) {
 
     VectorInit(&loc_translator->labels_vec, 0, sizeof(Label));
 
+    VectorInit(&loc_translator->defines, 0, sizeof(Define));
+
     char reg_names[REG_COUNT][REG_NAME_MAX_SIZE] = { "RAX", "RBX", "RCX", "RDX", "REX", "RFX", "RGX", "RHX" };
 
     memcpy(loc_translator->reg_names, reg_names, sizeof(reg_names));
 
-    loc_translator->program = {};
+    TextInit(&loc_translator->program);
 
     *translator = loc_translator;
 }
@@ -44,11 +47,13 @@ void TranslatorInit(Translator** translator) {
 void TranslatorFree(Translator* translator) {
     assert(translator);
 
-    TextMemoryFree(translator->program);
+    TextMemoryFree(&translator->program);
 
     VectorFree(translator->program_vec);
 
     VectorFree(translator->labels_vec);
+
+    VectorFree(translator->defines);
 
     free(translator);
 }
@@ -126,7 +131,7 @@ void PredBytecodeConstructor(Translator* translator) {
         }
 
         size_t args_count = 0;
-        while (strtok(NULL, " ") != NULL) { // FIXME - проверить что булет если 2 пробела подряд между аргументами
+        while (strtok(NULL, " ") != NULL) { // FIXME - проверить что булет если 2 пробела подряд между аргументами Будет хуйня
             args_count++;
             instruction_pointer++;
         }
@@ -148,10 +153,10 @@ void PredBytecodeConstructor(Translator* translator) {
             continue;
         }
 
-        if (strcmp(instruction_name, "ALIAS") == 0) { // FIXME - const str
+        if (strcmp(instruction_name, DEFINE_WORD) == 0) {
             // FIXME - Function
             if (args_count != 2) {
-                fprintf(stderr, "Неверное количество аргументов у ALIAS\n");
+                fprintf(stderr, "Неверное количество аргументов у define\n");
                 printf("line: %lu\n", line_i + 1);
                 return;
             }
@@ -159,26 +164,11 @@ void PredBytecodeConstructor(Translator* translator) {
             instruction_pointer -= 2;
 
             char* defined_name = strchr(line->data, '\0') + 1;
-            char* defined_name_value = strchr(defined_name, '\0') + 1;
+            char* define_value = strchr(defined_name, '\0') + 1;
 
-            if (strlen(defined_name_value) + 1 > 32) { // FIXME - const
-                fprintf(stderr, "Слишком длинное имя регистра\n");
-                printf("line: %lu\n", line_i + 1);
-                return;
-            }
+            Define define = {.defined_name = defined_name, .define_value = define_value};
 
-
-            for (size_t reg_i = 0; reg_i < 8; reg_i++) { // FIXME - const
-                if (strcmp(defined_name, translator->reg_names[reg_i]) == 0) {
-                    strncpy(translator->reg_names[reg_i], defined_name_value, 32);
-                }
-            }
-
-            if (defined_name_value[0] != 'R') { // FIXME - const
-                fprintf(stderr, "Имя регистра обязательно должно начинаться с 'R'\n");
-                printf("line: %lu\n", line_i + 1);
-                return;
-            }
+            VectorPush(translator->defines, &define);
 
             continue;
         }
@@ -213,12 +203,34 @@ void ProgramVecConstructor(Translator* translator) {
             }
         }
 
-        char* arg = strchr(instruction_name, '\0') + 1;
-        while (arg - line.data < (ssize_t)line.size) {
+        char* arg_ptr = strchr(instruction_name, '\0') + 1;
+
+
+        while (arg_ptr - line.data < (ssize_t)line.size) {
+            int define_num = -1;
+
+            //FIXME функция которая ищет дефайн
+            for (int define_i = 0; define_i < (int)translator->defines->size; define_i++) {
+                Define define = {};
+                VectorGet(translator->defines, (size_t)define_i, &define);
+
+                if (strcmp(arg_ptr, define.define_value) == 0) {
+                    define_num = define_i;
+                }
+            }
+
+            char* arg = arg_ptr;
+            if (define_num != -1) {
+                Define define = {};
+                VectorGet(translator->defines, (size_t)define_num, &define);
+
+                arg = define.defined_name;
+            }
+
             if (arg[0] == LABEL_MARK) {
                 LabelsArgs(translator, arg);
             }
-            else if (arg[0] == 'R' && strcmp(instruction_name, "ALIAS") != 0) { // FIXME - const
+            else if (arg[0] == 'R' && strcmp(instruction_name, DEFINE_WORD) != 0) { // FIXME - const
                 int reg_num = -1;
 
                 //FIXME функция которая ищет регистр
@@ -240,13 +252,13 @@ void ProgramVecConstructor(Translator* translator) {
                 int int_arg = atoi(arg);
                 VectorPush(translator->program_vec, &int_arg);
             }  
-            else if (strcmp(instruction_name, "ALIAS") == 0) { }
+            else if (strcmp(instruction_name, DEFINE_WORD) == 0) { }
             else {
                 fprintf(stderr, "Неверный аргумент\n");
                 printf("line: %lu\n", line_i + 1);
                 return;
             }
-            arg = strchr(arg, '\0') + 1;
+            arg_ptr = strchr(arg_ptr, '\0') + 1;
         }
     }
 }
@@ -277,14 +289,14 @@ char* BytecodeFileName(char* asm_file_name) {
     return bytecode_file_name;
 }
 
-void LabelsArgs(Translator* translator, const char* arg) {
+void LabelsArgs(Translator* translator, const char* arg_ptr) {
     for (size_t label_i = 0; label_i < translator->labels_vec->size; label_i++) {
         Label label = {};
         VectorGet(translator->labels_vec, label_i, &label);
 
         const char* label_name = label.name;
         
-        if (strcmp(arg + 1, label_name) == 0) {
+        if (strcmp(arg_ptr + 1, label_name) == 0) {
             VectorPush(translator->program_vec, &label.adresses);
         }
     }

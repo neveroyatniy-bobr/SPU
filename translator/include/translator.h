@@ -13,6 +13,7 @@ static const size_t REG_NAME_MAX_SIZE = 32;
 struct Translator {
     Vector* program_vec;
     Vector* labels_vec;
+    Vector* defines;
     char reg_names[REG_COUNT][REG_NAME_MAX_SIZE];
     Text program;
 };

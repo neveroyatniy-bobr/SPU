@@ -34,6 +34,11 @@ struct Text {
     TextHandler handler;
 };
 
+/// @brief Инициализирует текст
+/// @param text Текст
+/// @return Код ошибки
+TextError TextInit(Text* text);
+
 /// @brief Парсит входной файл в массив строк. Обязательно Освободить память выделенную для указателей на элементы и сами элементы
 /// @param text Указатель на структуру Text с текстом
 /// @param input_file_name Название входного файла
@@ -43,7 +48,7 @@ TextError TextParse(Text* text, const char* input_file_name);
 /// @brief Освобождает память, выделенную под текст.
 /// @param text Текст
 /// @return Код ошибки
-TextError TextMemoryFree(Text text);
+TextError TextMemoryFree(Text* text);
 
 /// @brief Проверяет текст на ошибки, 
 /// @param text  Текст
