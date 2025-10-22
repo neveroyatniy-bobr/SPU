@@ -189,7 +189,7 @@ StackError StackExpantion(Stack* stack) {
         return stack->last_error_code = STACK_NULL_PTR;
     }
 
-    stack_elem_t* data = (stack_elem_t*)realloc(stack->data - BIRD_SIZE, stack->capacity * STACK_GROW_FACTOR * sizeof(*(stack->data))) + BIRD_SIZE;
+    stack_elem_t* data = (stack_elem_t*)realloc(stack->data - BIRD_SIZE, ((stack->capacity - 2 * BIRD_SIZE) * STACK_GROW_FACTOR + 2 * BIRD_SIZE) * sizeof(*(stack->data))) + BIRD_SIZE;
     if (data == NULL) {
         return stack->last_error_code = STACK_EXPANTION_ERR;
     }
@@ -199,7 +199,7 @@ StackError StackExpantion(Stack* stack) {
         *(stack->data + stack->capacity - 2 * BIRD_SIZE + i) = 0;
     }
 
-    stack->capacity *= STACK_GROW_FACTOR;
+    stack->capacity = (stack->capacity - 2 * BIRD_SIZE) * STACK_GROW_FACTOR + 2 * BIRD_SIZE;
 
     for (int i = 0; i < BIRD_SIZE; i++) {
         *(stack->data + stack->capacity - 2 * BIRD_SIZE + i) = BIRD_VALUE;
@@ -219,17 +219,13 @@ StackError StackContraction(Stack* stack) {
         return stack->last_error_code = STACK_NULL_PTR;
     }
 
-    stack_elem_t* data = (stack_elem_t*)realloc(stack->data - BIRD_SIZE, stack->capacity / STACK_GROW_FACTOR * sizeof(*(stack->data))) + BIRD_SIZE;
+    stack_elem_t* data = (stack_elem_t*)realloc(stack->data - BIRD_SIZE, ((stack->capacity - BIRD_SIZE * 2) / STACK_GROW_FACTOR + 2 * BIRD_SIZE) * sizeof(*(stack->data))) + BIRD_SIZE;
     if (data == NULL) {
         return stack->last_error_code = STACK_CONTRACTION_ERR;
     }
     stack->data = data;
 
-    for (int i = 0; i < BIRD_SIZE; i++) {
-        *(stack->data + stack->capacity - 2 * BIRD_SIZE + i) = 0;
-    }
-
-    stack->capacity /= STACK_GROW_FACTOR;
+    stack->capacity =  (stack->capacity - BIRD_SIZE * 2) / STACK_GROW_FACTOR + 2 * BIRD_SIZE;
 
     for (int i = 0; i < BIRD_SIZE; i++) {
         *(stack->data + stack->capacity - 2 * BIRD_SIZE + i) = BIRD_VALUE;
