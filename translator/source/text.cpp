@@ -45,6 +45,12 @@ void TextPrintError(TextError error) {
     case TEXT_HANDLER_NULL_PTR:
         fprintf(stderr, "Нулевой указатель на хэндлер текста\n");
         break;
+    case TEXT_OPEN_FILE_ERROR:
+        fprintf(stderr, "Не удалось открыть файл\n");
+        break;
+    case TEXT_READ_FILE_ERROR:
+        fprintf(stderr, "Не удалось прочитать содержимое файла\n");
+        break;
     default:
         fprintf(stderr, "Непредвиденная ошибка\n");
         break;
@@ -74,8 +80,7 @@ TextError TextParse(Text* text, const char* input_file_name) {
     int input_file = open(input_file_name, O_RDONLY);
 
     if (input_file == -1) {
-        fprintf(stderr, "Не удалось открыть файл: %s. %s\n", input_file_name, strerror(errno));
-        return TEXT_OK;
+        return text->last_error_code = TEXT_OPEN_FILE_ERROR;
     }
     
     size_t file_size = FileSize(input_file);
@@ -85,8 +90,7 @@ TextError TextParse(Text* text, const char* input_file_name) {
     ssize_t true_file_size = read(input_file, text_buffer, file_size);
 
     if (true_file_size == -1) {
-        fprintf(stderr, "Не удалось прочитать содержимое файла: %s. %s\n", input_file_name, strerror(errno));
-        return TEXT_OK;
+        return text->last_error_code = TEXT_READ_FILE_ERROR;
     }
 
     text_buffer[true_file_size] = '\n';

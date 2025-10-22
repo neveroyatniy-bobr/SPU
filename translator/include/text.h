@@ -7,7 +7,9 @@ enum TextError {
     TEXT_OK                  =  0,
     TEXT_DATA_NULL_PTR       =  1,
     TEXT_BUFFER_NULL_PTR     =  2,
-    TEXT_HANDLER_NULL_PTR    =  3
+    TEXT_HANDLER_NULL_PTR    =  3,
+    TEXT_OPEN_FILE_ERROR     =  4,
+    TEXT_READ_FILE_ERROR     =  5
 };
 
 /// @brief Выводит сообщение об ошибке в stderr
