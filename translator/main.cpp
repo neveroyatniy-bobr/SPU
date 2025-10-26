@@ -2,17 +2,21 @@
 
 #include "translator.h"
 #include "vector.h"
+#include "protected_free.h"
 
-inline static void* VoidPtrPlus(void* ptr, const ssize_t n) {
-    return (void*)((ssize_t)ptr + n);
-};
-
-int main(int argc, char** argv) {for (int arg_i = 1; arg_i < argc; arg_i++) {
+int main(int argc, char** argv) {
+    for (int arg_i = 1; arg_i < argc; arg_i++) {
         char* asm_file_name = argv[arg_i];
         char* bytecode_file_name = BytecodeFileName(asm_file_name);
 
-        Translate(asm_file_name, bytecode_file_name);
+        Translator* translator = NULL;
 
-        free(bytecode_file_name); // FIXME - destructor
+        TRANSLATOR_DO_OR_DIE(TranslatorInit(&translator), translator);
+
+        TRANSLATOR_DO_OR_DIE(Translate(translator, asm_file_name, bytecode_file_name), translator);
+
+        TRANSLATOR_DO_OR_DIE(BytecodeFileFree(bytecode_file_name), translator);
+
+        TranslatorFree(translator), translator;
     }
 }

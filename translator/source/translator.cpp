@@ -12,6 +12,8 @@
 #include "vector.h"
 #include "labels.h"
 #include "define.h"
+#include "protected_free.h"
+#include "color.h"
 
 // FIXME Нормально разбить на функции
 // FIXME Мб разбить на файлы
@@ -19,14 +21,13 @@
 
 static bool IsStrInt(const char* str);
 
-void TranslatorInit(Translator** translator) {
+TranslatorError TranslatorInit(Translator** translator) {
     assert(translator);
     
     Translator* loc_translator = (Translator*)calloc(1, sizeof(Translator));
     
     if (loc_translator == NULL) {
-        fprintf(stderr, "Не удалось выделить память на транслятор\n");
-        abort();
+        return TRANSLATOR_ALLOC_ERROR;
     }
 
     VectorInit(&loc_translator->program_vec, 0, sizeof(int));
@@ -35,17 +36,32 @@ void TranslatorInit(Translator** translator) {
 
     VectorInit(&loc_translator->defines, 0, sizeof(Define));
 
-    char reg_names[REG_COUNT][REG_NAME_MAX_SIZE] = { "RAX", "RBX", "RCX", "RDX", "REX", "RFX", "RGX", "RHX" };
-
     memcpy(loc_translator->reg_names, reg_names, sizeof(reg_names));
 
     TextInit(&loc_translator->program);
+    
+    loc_translator->last_error_code = TRANSLATOR_OK;
+
+    loc_translator->log = { .cpp_file_name =    "",
+                            .cpp_line      =     0,
+                            .is_asm_error  = false,
+                            .asm_file_name =    "",
+                            .asm_line      =     0
+                          };
+
+    loc_translator->handler = TranslatorStdHandler;
 
     *translator = loc_translator;
+
+    TranslatorCheck((*translator));
+    
+    return (*translator)->last_error_code = TRANSLATOR_OK;
 }
 
-void TranslatorFree(Translator* translator) {
+TranslatorError TranslatorFree(Translator* translator) {
     assert(translator);
+
+    TranslatorCheck(translator);
 
     TextMemoryFree(&translator->program);
 
@@ -55,26 +71,32 @@ void TranslatorFree(Translator* translator) {
 
     VectorFree(translator->defines);
 
-    free(translator);
+    protected_free(translator);
+
+    return TRANSLATOR_OK;
 }
 
-void Translate(const char* asm_file_name, const char* bytecode_file_name) {
+
+//FIXME добавить обработку с помощью макроса типа if !OK -> return err
+TranslatorError Translate(Translator* translator,  const char* asm_file_name, const char* bytecode_file_name) {
     assert(asm_file_name);
     assert(bytecode_file_name);
 
-    Translator* translator = NULL;
+    TranslatorCheck(translator);
 
-    TranslatorInit(&translator);
+    translator->log.asm_file_name = asm_file_name;
 
     TextParse(&translator->program, asm_file_name);
 
-    PredBytecodeConstructor(translator);
+    TRANSLATOR_TRANSLATOR_DO_OR_DIE(PredBytecodeConstructor(translator), translator);
 
-    ProgramVecConstructor(translator);
+    TRANSLATOR_TRANSLATOR_DO_OR_DIE(ProgramVecConstructor(translator), translator);
 
-    UploadBytecodeFile(translator, bytecode_file_name);
-    
-    TranslatorFree(translator);
+    TRANSLATOR_TRANSLATOR_DO_OR_DIE(UploadBytecodeFile(translator, bytecode_file_name), translator);
+
+    TranslatorCheck(translator);
+
+    return translator->last_error_code = TRANSLATOR_OK;
 }
 
 static bool IsStrInt(const char* str) {
@@ -86,8 +108,10 @@ static bool IsStrInt(const char* str) {
     return sscanf(str, "%d%c", &dummy_i, &dummy_c) == 1;
 }
 
-void PredBytecodeConstructor(Translator* translator) {
+TranslatorError PredBytecodeConstructor(Translator* translator) {
     assert(translator);
+
+    TranslatorCheck(translator);
 
     int instruction_pointer = 0;
 
@@ -110,9 +134,9 @@ void PredBytecodeConstructor(Translator* translator) {
         }
 
         if (end_of_line == NULL) {
-            fprintf(stderr, "Пропущена ;\n");
-            printf("line: %lu\n", line_i + 1);
-            return;
+            translator->log.is_asm_error = true;
+            translator->log.asm_line = line_i;
+            return translator->last_error_code = EXPEXTED_DOT_COMMA;
         }
 
         *end_of_line = '\0';
@@ -138,9 +162,9 @@ void PredBytecodeConstructor(Translator* translator) {
 
         if (instruction_name[0] == LABEL_MARK) {
             if (args_count > 0) {
-                fprintf(stderr, "У метки не может быть аргументов\n");
-                printf("line: %lu\n", line_i + 1);
-                return;
+                translator->log.is_asm_error = true;
+                translator->log.asm_line = line_i;
+                return translator->last_error_code = LABEL_HAS_NOT_ARGS;
             }
 
             const char* label_name = instruction_name + 1;
@@ -156,9 +180,9 @@ void PredBytecodeConstructor(Translator* translator) {
         if (strcmp(instruction_name, DEFINE_WORD) == 0) {
             // FIXME - Function
             if (args_count != 2) {
-                fprintf(stderr, "Неверное количество аргументов у define\n");
-                printf("line: %lu\n", line_i + 1);
-                return;
+                translator->log.is_asm_error = true;
+                translator->log.asm_line = line_i;
+                return translator->last_error_code = DEFINES_ARGS_COUNT_ERROR;
             }
 
             instruction_pointer -= 2;
@@ -174,22 +198,27 @@ void PredBytecodeConstructor(Translator* translator) {
         }
 
         if (args_count != true_args_count) {
-            fprintf(stderr, "Неверное количество аргументов у инструкции\n");
-            printf("line: %lu\n", line_i + 1);
-            return;
+            translator->log.is_asm_error = true;
+            translator->log.asm_line = line_i;
+            return translator->last_error_code = INSTRUCTION_ARGS_COUNT_ERROR;
         }
 
         if (!is_instruction) {
-            fprintf(stderr, "Несуществующая инструкция: %s\n", instruction_name);
-            printf("line: %lu\n", line_i + 1);
-            return;
+            translator->log.is_asm_error = true;
+            translator->log.asm_line = line_i;
+            return translator->last_error_code = UNDEFINED_INSTRICTION;
         }
-    
     }
+
+    TranslatorCheck(translator);
+
+    return translator->last_error_code = TRANSLATOR_OK;
 }
 
 // FIXME пожалйста пожалйста называй нормально ЕБАНЫЕ функциииии
-void ProgramVecConstructor(Translator* translator) {
+TranslatorError ProgramVecConstructor(Translator* translator) {
+    TranslatorCheck(translator);
+
     assert(translator);
 
     for (size_t line_i = 0; line_i < translator->program.size; line_i++) {
@@ -230,20 +259,20 @@ void ProgramVecConstructor(Translator* translator) {
             if (arg[0] == LABEL_MARK) {
                 LabelsArgs(translator, arg);
             }
-            else if (arg[0] == 'R' && strcmp(instruction_name, DEFINE_WORD) != 0) { // FIXME - const
+            else if (arg[0] == REG_START_CHAR && strcmp(instruction_name, DEFINE_WORD) != 0) {
                 int reg_num = -1;
 
                 //FIXME функция которая ищет регистр
-                for (int reg_i = 0; reg_i < 8; reg_i++) { //FIXME const
+                for (int reg_i = 0; reg_i < (int)REG_COUNT; reg_i++) {
                     if (strcmp(arg, translator->reg_names[reg_i]) == 0) {
                         reg_num = reg_i;
                     }
                 }
 
                 if (reg_num == -1) {
-                    fprintf(stderr, "Неверное имя регистра\n");
-                    printf("line: %lu\n", line_i + 1);
-                    return;
+                    translator->log.is_asm_error = true;
+                    translator->log.asm_line = line_i;
+                    return translator->last_error_code = UNDEFINED_REG;
                 }
 
                 VectorPush(translator->program_vec, &reg_num);
@@ -254,28 +283,37 @@ void ProgramVecConstructor(Translator* translator) {
             }  
             else if (strcmp(instruction_name, DEFINE_WORD) == 0) { }
             else {
-                fprintf(stderr, "Неверный аргумент\n");
-                printf("line: %lu\n", line_i + 1);
-                return;
+                translator->log.is_asm_error = true;
+                translator->log.asm_line = line_i;
+                return translator->last_error_code = INCORRECT_ARG;
             }
             arg_ptr = strchr(arg_ptr, '\0') + 1;
         }
     }
+
+    TranslatorCheck(translator);
+
+    return translator->last_error_code = TRANSLATOR_OK;
 }
 
-void UploadBytecodeFile(Translator* translator, const char* bytecode_file_name) {
+TranslatorError UploadBytecodeFile(Translator* translator, const char* bytecode_file_name) {
     assert(translator);
     assert(bytecode_file_name);
 
+    TranslatorCheck(translator);
+
     FILE* bytecode_file = fopen(bytecode_file_name, "w");
     if (bytecode_file == NULL) {
-        fprintf(stderr, "Не удалось создать файл. %s\n", strerror(errno));
-        return;
+        return translator->last_error_code = CREATE_BYTECODE_FILE_ERRROR;
     }
 
     fwrite(translator->program_vec->data, (size_t)translator->program_vec->elem_size, (size_t)translator->program_vec->size, bytecode_file);
 
     fclose(bytecode_file);
+
+    TranslatorCheck(translator);
+
+    return translator->last_error_code = TRANSLATOR_OK;
 }
 
 char* BytecodeFileName(char* asm_file_name) {
@@ -289,7 +327,15 @@ char* BytecodeFileName(char* asm_file_name) {
     return bytecode_file_name;
 }
 
-void LabelsArgs(Translator* translator, const char* arg_ptr) {
+TranslatorError BytecodeFileFree(char* bytecode_file_name) {
+    protected_free(bytecode_file_name);
+    return TRANSLATOR_OK;
+}
+
+//FIXME Добавить if !OK return err;
+TranslatorError LabelsArgs(Translator* translator, const char* arg_ptr) {
+    TranslatorCheck(translator);
+
     for (size_t label_i = 0; label_i < translator->labels_vec->size; label_i++) {
         Label label = {};
         VectorGet(translator->labels_vec, label_i, &label);
@@ -300,4 +346,143 @@ void LabelsArgs(Translator* translator, const char* arg_ptr) {
             VectorPush(translator->program_vec, &label.adresses);
         }
     }
+
+    TranslatorCheck(translator);
+
+    return translator->last_error_code =TRANSLATOR_OK;
+}
+
+void TranslatorPrintError(TranslatorError error) {
+    switch (error) {
+    case TRANSLATOR_OK:
+        fprintf(stderr, "Выполнено без ошибок\n");
+        break;
+    case TRANSLATOR_HANDLER_NULL_PTR:
+        fprintf(stderr, "Нулевой указатель на хэндлер транслятора\n");
+        break;
+    case DEFINES_VECTOR_ERROR:
+        fprintf(stderr, "Ошибка вектора с дефайнами\n");
+        break;
+    case LABELS_VECTOR_ERROR:
+        fprintf(stderr, "Ошибка вектора с метками\n");
+        break;
+    case PROGRAM_VECTOR_ERROR:
+        fprintf(stderr, "Ошибка вектора с байткодом\n");
+        break;
+    case PROGRAM_TEXT_ERROR: 
+        fprintf(stderr, "Ошибка в тексте программы\n");
+        break;
+    case TRANSLATOR_ALLOC_ERROR:
+        fprintf(stderr, "Не удалось выделить память на транслятор\n");
+        break;
+    case EXPEXTED_DOT_COMMA:
+        fprintf(stderr, "Пропущена ;\n");
+        break;
+    case LABEL_HAS_NOT_ARGS:
+        fprintf(stderr, "У метки не может быть аргументов\n");
+        break;
+    case DEFINES_ARGS_COUNT_ERROR:
+        fprintf(stderr, "Неверное количество аргументов у define\n");
+        break;
+    case INSTRUCTION_ARGS_COUNT_ERROR:
+        fprintf(stderr, "Неверное количество аргументов у инструкции\n");
+        break;
+    case UNDEFINED_INSTRICTION:
+        fprintf(stderr, "Несуществующая инструкция\n");
+        break;
+    case UNDEFINED_REG:
+        fprintf(stderr, "Неверное имя регистра\n");
+        break;
+    case INCORRECT_ARG:
+        fprintf(stderr, "Неверный аргумент\n");
+        break;
+    case CREATE_BYTECODE_FILE_ERRROR:
+        fprintf(stderr, "Не удалось создать байткод файл.\n");
+        break;
+    default:
+        fprintf(stderr, "Непредвиденная ошибка\n");
+        break;
+    }
+}
+
+TranslatorError TranslatorVerefy(Translator* translator){
+    assert(translator);
+
+    if (translator->last_error_code != TRANSLATOR_OK) {
+        return translator->last_error_code;
+    }
+
+    if (VectorVerefy(translator->defines) != VECTOR_OK) {
+        return translator->last_error_code = DEFINES_VECTOR_ERROR;
+    }
+
+    if (VectorVerefy(translator->labels_vec) != VECTOR_OK) {
+        return translator->last_error_code = LABELS_VECTOR_ERROR;
+    }
+
+    if (VectorVerefy(translator->program_vec) != VECTOR_OK) {
+        return translator->last_error_code = PROGRAM_VECTOR_ERROR;
+    }
+
+    if (translator->handler == NULL) {
+        return translator->last_error_code = TRANSLATOR_HANDLER_NULL_PTR;
+    }
+
+    return translator->last_error_code = TRANSLATOR_OK;
+}
+
+void TranslatorDump(Translator* translator) {
+    fprintf(stderr, BYEL "==============TRANSLATOR=DUMP==============\n" reset);
+
+    const char* file;
+    size_t line;
+    if (translator->log.is_asm_error) {
+        file = translator->log.asm_file_name;
+        line = translator->log.asm_line;
+    } else {
+        file = translator->log.cpp_file_name;
+        line = translator->log.cpp_line;
+    }
+
+    fprintf(stderr, BRED "ERROR in %s:%lu:\n", file, line);
+    TranslatorPrintError(translator->last_error_code);
+    fprintf(stderr, reset);
+
+    VectorDump(translator->program_vec, file, line);
+
+    VectorDump(translator->labels_vec, file, line);
+
+    VectorDump(translator->defines, file, line);
+
+    fprintf(stderr, BYEL "REG_NAMES:\n" reset);
+    for (size_t reg_i = 0; reg_i < REG_COUNT; reg_i++) {
+        fprintf(stderr, GRN "reg_names[%lu]" BYEL " = " MAG "%s\n" reset, reg_i, translator->reg_names[reg_i]);
+    }
+
+    TextDump(&translator->program, file, (size_t)line);
+
+    fprintf(stderr, GRN "handler_ptr " BYEL "= " MAG "%p\n" reset, translator->handler);
+}
+
+void TranslatorStdHandler(Translator* translator) {
+    TranslatorDump(translator);
+    abort();
+}
+
+TranslatorError TranslatorSetHandler(Translator* translator, TranslatorHandler handler) {
+    assert(translator);
+    assert(handler);
+
+    translator->handler = handler;
+
+    return translator->last_error_code = TRANSLATOR_OK;
+}
+
+TranslatorError TranslatorSetStdHandler(Translator* translator) {
+    return TranslatorSetHandler(translator, TranslatorStdHandler);
+}
+
+bool TranslatorDie(Translator* translator) {
+    translator->handler(translator);
+    return 0;
 }

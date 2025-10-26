@@ -10,6 +10,7 @@
 #include <errno.h>
 
 #include "vector.h"
+#include "protected_free.h"
 
 inline static void* VoidPtrPlus(void* ptr, const ssize_t n);
 
@@ -119,7 +120,7 @@ TextError TextParse(Text* text, const char* input_file_name) {
 
     text->size = (size_t)text_vec->size;
 
-    free(text_vec);
+    protected_free(text_vec);
 
     TextCheck(text);
 
@@ -129,9 +130,10 @@ TextError TextParse(Text* text, const char* input_file_name) {
 TextError TextMemoryFree(Text* text) {
     TextCheck(text);
 
-    free(text->buffer);
-
+    protected_free(text->buffer);
+    
     free(VoidPtrPlus(text->data, -(ssize_t)VECTOR_BIRD_SIZE * (ssize_t)sizeof(Line)));
+    text->data = NULL;
 
     TextCheck(text);
 
@@ -181,10 +183,11 @@ void TextDump(Text* text, const char* file, size_t line) {
 
 void TextStdHandler(Text* text, const char* file, size_t line) {
     TextDump(text, file, line);
-    abort();
 }
 
 TextError TextSetHandler(Text* text, TextHandler handler) {
+    assert(text);
+
     if (text->handler == NULL) {
         return text->last_error_code = TEXT_HANDLER_NULL_PTR;
     }
@@ -195,8 +198,7 @@ TextError TextSetHandler(Text* text, TextHandler handler) {
 }
 
 TextError TextSetStdHandler(Text* text) {
-    text->handler = TextStdHandler;
-    return text->last_error_code = TEXT_OK;
+    return TextSetHandler(text, TextStdHandler);
 }
 
 bool TextDie(Text* text, const char* file, size_t line) {

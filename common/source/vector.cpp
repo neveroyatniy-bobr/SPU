@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "color.h"
+#include "protected_free.h"
 
 inline static size_t min(size_t a, size_t b) {
     return a <= b ? a : b;
@@ -169,6 +170,8 @@ bool VectorDie(Vector* vector, const char* file, size_t line) {
 }
 
 VectorError VectorInit(Vector** vector, size_t capacity, size_t elem_size) {
+    assert(vector != NULL);
+
     *vector = (Vector*)calloc(1, sizeof(Vector));
 
     (*vector)->capacity = max(VECTOR_MIN_CAPACITY, capacity) + 2 * VECTOR_BIRD_SIZE;
@@ -263,12 +266,13 @@ VectorError VectorFree(Vector* vector) {
     }
 
     free(VoidPtrPlus(vector->data, - (ssize_t)VECTOR_BIRD_SIZE * (ssize_t)vector->elem_size));
+    vector->data = NULL;
 
     vector->capacity = 0;
     vector->size = 0;
     vector->data = NULL;
 
-    free(vector);
+    protected_free(vector);
 
     return VECTOR_OK;
 }

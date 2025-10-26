@@ -1,0 +1,1 @@
+#define protected_free(ptr) free(ptr); ptr = NULL;
