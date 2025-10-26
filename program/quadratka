@@ -1,0 +1,174 @@
+#define RAX RcoffA;
+#define RBX RcoffB;
+#define RCX RcoffC;
+
+IN;
+POPR RcoffA; <--- a
+
+IN;
+POPR RcoffB; <--- b
+
+IN;
+POPR RcoffC; <--- c
+
+
+PUSH 0;
+PUSHR RcoffA;
+JNE :HUI;
+PUSH 0;
+PUSHR RcoffA;
+JE :6;
+
+:HUI; if (a != 0)
+
+    COM; D = b^2 - 4*a*c
+
+    PUSHR RcoffC;
+    PUSHR RcoffA;
+    PUSH 4;
+    MUL;
+    MUL;
+
+    PUSHR RcoffB;
+    PUSHR RcoffB;
+    MUL;
+
+    SUB;
+
+    POPR RcoffC; <--- D
+
+    PUSH 0;
+    PUSHR RcoffC;
+    JA :1;
+    PUSH 0;
+    PUSHR RcoffC;
+    JE :2;
+    PUSH 0;
+    PUSHR RcoffC;
+    JB :3;
+
+    :1;
+        COM; x1 = (D^(1/2) - b) / 2a
+
+        PUSHR RcoffA;
+        PUSH 2;
+        MUL;
+
+        PUSHR RcoffB;
+        PUSH 1000;
+        MUL;
+        PUSHR RcoffC;
+        PUSH 1000000;
+        MUL;
+        SQRT;
+        SUB;
+
+        DIV;
+        OUT;
+
+        COM; x2 = (-D^(1/2) - b) / 2a
+
+        PUSHR RcoffA;
+        PUSH 2;
+        MUL;
+
+        PUSHR RcoffB;
+        PUSH 1000;
+        MUL;
+        PUSHR RcoffC;
+        PUSH 1000000;
+        MUL;
+        SQRT;
+        PUSH -1;
+        MUL;
+        SUB;
+
+        DIV;
+        OUT;
+
+        JMP :4;
+
+    :2;
+        PUSH 2;
+        PUSHR RcoffA;
+        MUL;
+
+        PUSHR RcoffB;
+        PUSH -1000;
+        MUL;
+
+        DIV;
+
+        OUT;
+
+        JMP :4;
+
+    :3;
+        PUSH -1;
+        OUT;
+
+        PUSH -1;
+        OUT;
+
+        JMP :4;
+
+    :4;
+
+    JMP :11;
+
+:6; if (a == 0)
+
+    PUSH 0;
+    PUSHR RcoffB;
+    JE :7;
+    PUSH 0;
+    PUSHR RcoffB;
+    JNE :8;
+
+    :7; if (b == 0)
+
+        PUSH 0;
+        PUSHR RcoffC;
+        JE :9;
+        PUSH 0;
+        PUSHR RcoffC;
+        JNE :10;
+
+        :9; if (c == 0)
+            PUSH 1;
+            OUT;
+            PUSH 1;
+            OUT;
+
+            JMP :13;
+
+        :10; else
+            PUSH -1;
+            OUT;
+            PUSH -1;
+            OUT;
+
+            JMP :13;
+
+        :13;
+
+        JMP :12;
+
+    :8; else
+        PUSHR RcoffB;
+
+        PUSHR RcoffC;
+        PUSH -1000;
+        MUL;
+
+        DIV;
+
+        OUT;
+
+        JMP :12;
+
+    :12;
+
+    JMP :11;
+
+:11;

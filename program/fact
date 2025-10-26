@@ -1,0 +1,33 @@
+#define RAX fact_n;
+
+JMP :end_of_funcs;
+
+:fact;
+    PUSHR fact_n;
+    PUSH 1;
+    JNE :no1;
+        RET;
+    :no1;
+
+    PUSHR fact_n;
+    MUL;
+
+    PUSH 1;
+    PUSHR fact_n;
+    SUB;
+    POPR fact_n;
+
+    CALL :fact;
+
+    RET;
+
+:end_of_funcs;
+
+PUSH 1;
+
+IN;
+POPR fact_n;
+
+CALL :fact;
+
+OUT;
