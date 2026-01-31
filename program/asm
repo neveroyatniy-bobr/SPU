@@ -1,0 +1,28 @@
+PUSH 5;
+POPM 0;
+PUSH 1;
+POPM 1;
+:while0;
+PUSH 0;
+PUSH 0;
+PUSHM 0;
+JA :cmpAB0;
+PUSH 0;
+JMP :endcmpAB0;
+:cmpAB0;
+PUSH 1;
+:endcmpAB0;
+JE :endwhile0;
+PUSHM 0;
+PUSHM 1;
+MUL;
+POPM 1;
+PUSH 1;
+PUSHM 0;
+SUB;
+POPM 0;
+JMP :while0;
+:endwhile0;
+
+PUSHM 1;
+OUT;

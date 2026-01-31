@@ -19,8 +19,7 @@ enum ProcessorError
 
 typedef void (*ProcessorHandler)(Processor* processor, const char* file, size_t line);
 
-struct Processor
-{
+struct Processor {
     Stack stack;
     Stack call_stack;
     int regs[REG_COUNT];
